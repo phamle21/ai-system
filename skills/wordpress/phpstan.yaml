@@ -1,5 +1,5 @@
-name: wp-phpstan
-description: PHP static analysis for WordPress projects - phpstan.neon setup, baselines, WordPress-specific typing, third-party plugin classes
+name: phpstan
+description: PHP static analysis for WordPress projects — phpstan.neon setup, baselines, WordPress-specific typing, third-party plugin classes
 version: 1.0
 compatibility:
   wordpress: "6.9+"
@@ -11,7 +11,6 @@ when_to_use:
   - generating or updating phpstan-baseline.neon
   - fixing PHPStan errors with WordPress-friendly PHPDoc
   - handling third-party plugin/theme classes safely
-  - configuring WordPress core stubs (szepeviktor/phpstan-wordpress or php-stubs/wordpress-stubs)
 
 input:
   - analysis_scope: first_party | first_and_third_party
@@ -20,12 +19,12 @@ input:
   - task: setup | fix_errors | update_baseline | configure_stubs
 
 steps:
-  - Run phpstan_inspect script to discover existing PHPStan setup (config, baseline, scripts)
-  - Prefer repo's existing composer script (e.g. composer run phpstan) when present
+  - Inspect PHPStan setup (config, baseline, scripts)
+  - Prefer repo's existing composer script when present
   - Ensure WordPress core stubs are loaded (szepeviktor/phpstan-wordpress or php-stubs/wordpress-stubs)
   - Configure phpstan.neon: focus paths on first-party code, exclude vendor/node_modules/build artifacts
-  - Fix errors with WordPress-specific PHPDoc typing (REST params, hook callbacks, query results, Action Scheduler)
-  - Handle third-party plugin classes: confirm dependency, use existing stubs (woocommerce-stubs, acf-pro-stubs), add narrow ignorePatterns only when needed
+  - Fix errors with WordPress-specific PHPDoc typing (REST params, hook callbacks, query results)
+  - Handle third-party plugin classes: confirm dependency, use existing stubs, add narrow ignorePatterns only when needed
   - Manage baseline as migration tool: generate once for legacy, reduce over time, never baseline new errors
 
 rules:

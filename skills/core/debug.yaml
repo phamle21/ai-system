@@ -1,6 +1,45 @@
 name: debug
-description: Identify and diagnose issues
+description: Identify and diagnose issues in codebase using structured debugging methodology
 version: 1.0
-steps: []
-rules: []
-output: { type: analysis }
+
+when_to_use:
+  - code not working as expected
+  - error messages or stack traces present
+  - performance issues or regressions
+  - unexpected behavior after changes
+
+input:
+  - error_message: error text or stack trace (if any)
+  - symptoms: description of unexpected behavior
+  - recent_changes: what was changed before issue appeared
+  - code_context: relevant code snippets or file paths
+
+steps:
+  - Run analyze skill to classify task type (must be "debug")
+  - Reproduce the issue in clean environment
+  - Isolate the problem: narrow down to smallest failing case
+  - Check logs, error output, and browser DevTools Console
+  - Compare with working baseline (git diff, version control)
+  - Form hypothesis about root cause
+  - Test hypothesis with minimal change
+  - Verify fix resolves issue and does not introduce regressions
+
+rules:
+  - Must reproduce issue before diagnosing
+  - Must isolate problem to smallest failing case
+  - Must check logs and error output before guessing
+  - Must compare with working baseline
+  - Must form hypothesis before making changes
+  - Must test with minimal change
+  - Must verify fix does not introduce regressions
+  - Must document root cause and fix in summary
+  - Must never modify unrelated code during debugging
+
+output:
+  type: analysis
+  schema:
+    root_cause: string
+    reproduction_steps: string[]
+    fix_applied: string
+    regressions_checked: boolean
+    confidence: 0.0-1.0

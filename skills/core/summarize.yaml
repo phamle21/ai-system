@@ -1,6 +1,44 @@
 name: summarize
-description: Produce summary report
+description: Produce structured summary report of completed work, changes made, and verification results
 version: 1.0
-steps: []
-rules: []
-output: { type: text }
+
+when_to_use:
+  - after completing a task or pipeline
+  - after implementing a feature or fix
+  - after code review
+  - when reporting work status
+
+input:
+  - execution_results: output from execute skill for each subtask
+  - plan: original implementation plan
+  - context: { modules, rules }
+
+steps:
+  - Collect execution results from all completed subtasks
+  - Compare execution output against original plan
+  - Summarize files changed and what was modified
+  - List validation results and any warnings
+  - Document any deviations from the plan
+  - Note token usage across entire pipeline
+  - Output structured summary report
+
+rules:
+  - Must include all completed subtasks in summary
+  - Must compare execution output against original plan
+  - Must document files changed with brief description
+  - Must list validation results and warnings
+  - Must note any plan deviations
+  - Must include total token usage
+  - Must not fabricate results or hide failures
+  - Must be concise and factual
+
+output:
+  type: text
+  schema:
+    plan_followed: boolean
+    files_changed: string[]
+    validations_passed: number
+    validations_failed: number
+    token_total: number
+    deviations: string[]
+    warnings: string[]

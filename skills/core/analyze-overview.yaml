@@ -1,0 +1,105 @@
+name: analyze-overview
+description: Parse project spec overview files, extract objectives, scope, data model, business logic, risks, and testing strategy into structured analysis for task breakdown
+version: 1.0
+
+when_to_use:
+  - before implementing any task
+  - reading project spec overview files
+  - generating task breakdowns from spec
+  - understanding feature scope before coding
+
+input:
+  - overview_file: path to spec overview file
+  - project_root: path to project root
+  - spec_rules: path to project spec rules file (optional)
+
+steps:
+  - Read the overview file
+  - Parse metadata: version, status, owner, last updated
+  - Extract Objective — problem, value, scope (small/medium/large)
+  - Extract Scope — In Scope + Out of Scope lists
+  - Extract System Context — FE pages, BE logic, DB changes, current flow
+  - Extract Current Behavior — data structure, business logic, UI (if present, skip if not applicable)
+  - Extract Proposed Solution — overview text, key changes list
+  - Extract Data Model — new fields table, code struct (if DB changes)
+  - Extract Business Logic — core logic, edge cases
+  - Extract Component Architecture — component table (if multi-component)
+  - Extract UI/UX — screens affected, changes
+  - Extract Data Flow — ASCII diagram or bullet summary
+  - Extract Risks & Impact — mandatory risk table
+  - Extract Testing Strategy — Unit/Integration/E2E tests
+  - Extract Task Breakdown — layer, description, dependencies
+  - Extract Files Changed — file paths + descriptions
+  - Extract project-specific patterns from content
+  - Validate: ensure In/Out Scope present, Risks table present, Dependencies present
+
+rules:
+  - Must parse all major sections from overview template
+  - Must never skip Risk & Impact (mandatory)
+  - Must never skip In Scope + Out of Scope (mandatory)
+  - Must preserve task dependencies from Task Breakdown section
+  - Must extract project-specific patterns: component names, type names, module names
+  - Must flag missing sections in validation output
+  - Must output structured analysis even if overview is incomplete
+  - Must not invent data not present in overview file
+  - Must not assume project conventions without loading spec rules
+
+output:
+  type: analysis
+  schema:
+    metadata:
+      version: string
+      status: string
+      owner: string
+      last_updated: string
+    objective: string
+    scope:
+      in_scope: string[]
+      out_of_scope: string[]
+    system_context:
+      fe_pages: string[]
+      be_services: string[]
+      db_changes: string[]
+      current_flow: string
+    current_behavior:
+      data: string
+      business_logic: string
+      ui_ux: string
+    proposed_solution:
+      overview: string
+      key_changes: string[]
+    data_model:
+      new_fields: object[]
+      code_struct: string
+    business_logic:
+      core_logic: string[]
+      edge_cases: string[]
+    component_architecture: object[]
+    ui_ux:
+      screens_affected: string[]
+      changes: string[]
+    data_flow: string
+    risks:
+      - risk: string
+        impact: string
+    testing_strategy:
+      unit: string[]
+      integration: string[]
+      e2e: string[]
+    task_breakdown:
+      - id: number
+        layer: string
+        description: string
+        dependencies: string
+    files_changed:
+      - file: string
+        description: string
+    project_patterns:
+      components: string[]
+      types: string[]
+      modules: string[]
+    validation:
+      risks_present: boolean
+      scope_present: boolean
+      dependencies_present: boolean
+      sections_skipped: string[]

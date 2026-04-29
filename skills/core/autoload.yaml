@@ -1,0 +1,50 @@
+name: autoload
+description: Auto-load project conventions, rules, and context files before implementing. Ensures AI follows project-specific guidelines.
+version: 1.0
+
+when_to_use:
+  - before implementing any task in a project
+  - before making code changes
+  - when switching between projects
+  - when uncertain about project conventions
+
+input:
+  - project_root: path to project root directory
+
+steps:
+  - Phase 1: Scan project root for auto-load files (check in priority order):
+    1. .ai/context.yaml - Project stack, modules, tech details
+    2. .ai/architecture.md - System architecture overview
+    3. .ai/rules.md - Project-specific coding standards and spec rules
+    4. .ai/notes.md - Patterns, gotchas, conventions
+  - Phase 2: Scan legacy auto-load paths:
+    1. .continue/prompts/system.md - Behavioral guidelines
+    2. .continue/prompts/AI-WORKFLOW.md - Engineering workflow
+    3. .continue/rules/[project]/convention.md - Technical conventions
+    4. specs/Rules.md - Spec/task management rules
+    5. specs/coding-standards.md - Coding standards
+    6. specs/system-overview.md - System overview
+  - Phase 3: Load global rules from ai-system/ (if accessible):
+    1. rules/ai-engineer-protocol.md - Behavioral rules
+    2. rules/[stack]-coding-standards.md - Stack-specific standards
+    3. templates/[stack]/project-conventions.yaml - Generic conventions
+    4. skills/core/* - Generic workflow skills
+  - Phase 4: Merge — project rules override global rules for same aspects
+  - Phase 5: Apply all loaded rules to current task. Never skip auto-load step.
+
+rules:
+  - Must always load context files before implementing
+  - Must never skip auto-load even if project appears simple
+  - Must apply all loaded rules to every task
+  - Must fallback to ai-system defaults if project-specific files missing
+  - Must not assume conventions — always load explicitly
+  - Must verify loaded conventions match current project (not legacy patterns)
+  - Must report which files were loaded before starting work
+
+output:
+  type: text
+  schema:
+    files_loaded: string[]
+    conventions_applied: string[]
+    fallback_used: boolean
+    warnings: string[]

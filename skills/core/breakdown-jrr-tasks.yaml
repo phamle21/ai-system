@@ -1,0 +1,65 @@
+name: breakdown-tasks
+description: Decompose spec overview into executable tasks following project naming conventions, respecting dependencies and project context
+version: 1.0
+
+when_to_use:
+  - after analyze-overview has parsed an overview file
+  - before creating task files
+  - when converting overview into actionable implementation tasks
+  - when task description is clear but step-by-step breakdown is needed
+
+input:
+  - analysis: output from analyze-overview skill
+  - context: project context (modules, types, tech stack)
+  - spec_rules: project spec rules (task naming, directory structure)
+
+steps:
+  - Phase 1: Parse analysis output (objectives, scope, data model, business logic)
+  - Phase 2: Group tasks by layer defined in project spec rules (default: Backend, Frontend, QA)
+  - Phase 3: Order tasks by dependency:
+    - Backend/Infrastructure first (data model, logic, API)
+    - Frontend/UI next (UI depends on backend data)
+    - QA/Testing last (tests depend on Backend+Frontend implementation)
+  - Phase 4: Generate task IDs following project naming convention:
+    - [Layer]-[Number]-[description].md
+    - Description in English, hyphen-separated
+  - Phase 5: Define each task with:
+    - File paths to modify/create
+    - Expected behavior after implementation
+    - Verification steps (must be independently verifiable)
+  - Phase 6: Limit max 8 tasks per breakdown (split further if more)
+  - Phase 7: Validate against project spec rules:
+    - Task naming follows project convention
+    - Dependencies column populated for all tasks
+    - QA tasks depend on corresponding Backend+Frontend tasks
+
+rules:
+  - Must follow project task naming convention from spec rules (not hardcoded)
+  - Must order tasks by dependency: Backend → Frontend/UI → QA
+  - Must limit max 8 tasks per breakdown
+  - Must include dependencies for every task
+  - Must ensure QA tasks depend on corresponding Backend+Frontend tasks
+  - Must reference specific project files, types, components from context
+  - Must map task scope to project complexity levels (small/medium/large)
+  - Must not invent tasks beyond overview scope
+  - Must respect project business logic guardrails
+  - Must output tasks that are independently verifiable
+
+output:
+  type: text
+  schema:
+    tasks:
+      - id: number
+        layer: string
+        file_name: string
+        description: string
+        depends_on: number[]
+        files_to_modify: string[]
+        files_to_create: string[]
+        verification: string
+        complexity: small | medium | large
+        expected_behavior: string
+    validation:
+      all_tasks_have_dependencies: boolean
+      qa_depends_on_backend_and_frontend: boolean
+      max_8_tasks: boolean

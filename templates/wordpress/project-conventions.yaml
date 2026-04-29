@@ -1,0 +1,408 @@
+# WordPress Project Conventions
+
+## 1. Architecture
+
+### 1.1 Namespace Pattern
+```
+Vendor\Namespace\[Module]\[SubModule]
+```
+- Module = feature domain (users, products, orders)
+- SubModule = component type (Handler, Service, Controller)
+
+### 1.2 File Organization
+```
+plugins/[plugin-name]/
+├── [plugin-name].php      # Main plugin file (bootstrap)
+├── vendor/                # Composer dependencies
+├── src/
+│   ├── Plugin.php         # Plugin class (hooks registration)
+│   └── Namespace/
+│       ├── [Module]/
+│       │   ├── Handler.php
+│       │   ├── Service.php
+│       │   └── Shortcodes/
+│       │       └── [ShortcodeName].php
+│       └── Shared/
+│           ├── BaseShortcode.php
+│           ├── BaseHandler.php
+│           └── helpers.php
+├── views/
+│   └── [module]/
+│       ├── index.php
+│       └── _partials/
+└── assets/
+    ├── scss/
+    ├── js/
+    └── dist/
+```
+
+### 1.3 Bootstrap Pattern
+```php
+<?php
+// [plugin-name].php
+if (!defined('ABSPATH')) exit;
+
+define('PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('PLUGIN_URL', plugin_dir_url(__FILE__));
+define('PLUGIN_VERSION', '1.0.0');
+define('PLUGIN_TEXT_DOMAIN', 'text-domain');
+
+require_once PLUGIN_DIR . 'vendor/autoload.php';
+
+register_activation_hook(__FILE__, 'plugin_activate');
+register_deactivation_hook(__FILE__, 'plugin_deactivate');
+
+function plugin_init() {
+    load_plugin_textdomain('text-domain', false, dirname(plugin_basename(__FILE__)) . '/languages');
+    Plugin::instance();
+}
+add_action('plugins_loaded', 'plugin_init');
+
+function plugin_activate() {
+    flush_rewrite_rules();
+    set_transient('plugin_activation_redirect', 1);
+}
+
+function plugin_deactivate() {
+    flush_rewrite_rules();
+}
+```
+
+## 2. Shortcodes
+
+### 2.1 Base Class
+```php
+namespace Vendor\Namespace\Shared;
+
+abstract class BaseShortcode {
+    protected $plugin;
+    private const STYLE = '[module]-style';
+    private const SCRIPT = '[module]-script';
+    
+    public function __construct($plugin) {
+        $this->plugin = $plugin;
+        $this->register_assets();
+    }
+    
+    abstract public function register_assets();
+    
+    public function register(): void {
+        add_shortcode($this->shortcode_name(), [$this, 'render_shortcode']);
+    }
+    
+    abstract protected function shortcode_name(): string;
+    
+    public function render_shortcode($atts, $content = null, $tag = '') {
+        $vars = $this->prepare_vars($atts, $content, $tag);
+        return $this->render_view('index.php', $vars);
+    }
+    
+    protected function render_view($template, $vars): string {
+        extract($vars);
+        ob_start();
+        require PLUGIN_DIR . "views/{$template}";
+        return ob_get_clean();
+    }
+    
+    protected function prepare_vars($atts, $content, $tag): array {
+        return [
+            'data' => [],
+            'nonce' => wp_create_nonce('shortcode_' . $tag),
+        ];
+    }
+}
+```
+
+### 2.2 Custom Shortcode
+```php
+namespace Vendor\Namespace\Shortcodes\Module;
+
+use Vendor\Namespace\Shared\BaseShortcode;
+
+final class ExampleShortcode extends BaseShortcode {
+    private const STYLE = 'module-example-style';
+    private const SCRIPT = 'module-example-script';
+    
+    protected function shortcode_name(): string {
+        return 'example_shortcode';
+    }
+    
+    public function register_assets(): void {
+        wp_register_style(
+            self::STYLE,
+            PLUGIN_URL . 'assets/dist/css/example.min.css',
+            [],
+            PLUGIN_VERSION,
+            'all'
+        );
+        wp_register_script(
+            self::SCRIPT,
+            PLUGIN_URL . 'assets/dist/js/example.min.js',
+            ['jquery'],
+            PLUGIN_VERSION,
+            true
+        );
+    }
+    
+    protected function render(array $atts, ?string $content, string $shortcode_name): string {
+        $atts = shortcode_atts(['key' => 'default'], $atts, $shortcode_name);
+        
+        $handler = new \Vendor\Namespace\Module\Handler();
+        $data = $handler->process($atts['key']);
+        
+        return $this->render_view('example/index.php', [
+            'data' => $data,
+            'shortcode_name' => $shortcode_name,
+            'nonce' => wp_create_nonce('shortcode_' . $shortcode_name),
+        ]);
+    }
+}
+```
+
+### 2.3 Asset Registration
+```php
+// Cache-bust with filemtime()
+wp_register_style(self::STYLE, $url, [], filemtime($css_path));
+wp_register_script(self::SCRIPT, $url, ['jquery'], filemtime($js_path), true);
+```
+
+## 3. AJAX Handling
+
+### 3.1 Pattern
+```
+1. Nonce check
+2. Sanitize input
+3. Business logic
+4. wp_send_json_success() / wp_send_json_error()
+```
+
+### 3.2 Example
+```php
+public function register_ajax_handlers(): void {
+    add_action('wp_ajax_[action]', [$this, 'handle_ajax']);
+    add_action('wp_ajax_nopriv_[action]', [$this, 'handle_ajax']);
+}
+
+public function handle_ajax(): void {
+    // 1. Nonce check
+    check_ajax_referer('[action]_nonce', 'nonce', false);
+    
+    // 2. Sanitize
+    $data = sanitize_text_field(wp_unslash($_POST['param'] ?? ''));
+    
+    // 3. Business logic
+    $handler = new \Vendor\Namespace\Module\Handler();
+    $result = $handler->process($data);
+    
+    // 4. Response
+    wp_send_json_success(['data' => $result]);
+}
+```
+
+## 4. Views / Templates
+
+### 4.1 File Protection
+```php
+<?php
+// views/module/index.php
+if (!defined('ABSPATH')) exit;
+?>
+```
+
+### 4.2 Escaping
+```php
+<?= esc_html($data['title'] ?? 'Default Title') ?>
+<?= esc_url($data['url'] ?? '#') ?>
+<?= esc_attr($data['class'] ?? '') ?>
+```
+
+### 4.3 Partials
+```php
+<?php require_once PLUGIN_DIR . "views/module/_partial.php"; ?>
+```
+- Partials prefixed with `_`
+- Named after their content, not location
+
+### 4.4 Fallback Pattern
+```php
+<?= $data['key'] ?? 'default' ?>
+```
+
+## 5. Data Conventions
+
+### 5.1 Meta Keys
+```php
+// snake_case, prefix with unique namespace
+update_post_meta($post_id, 'namespace_key', $value);
+get_post_meta($post_id, 'namespace_key', true);
+```
+
+### 5.2 WP_Query with Tax Query
+```php
+$query = new WP_Query([
+    'post_type' => 'custom_post',
+    'posts_per_page' => 10,
+    'tax_query' => [
+        [
+            'taxonomy' => 'custom_tax',
+            'field' => 'slug',
+            'terms' => ['term-slug'],
+        ],
+    ],
+]);
+```
+
+### 5.3 Options API
+```php
+update_option('namespace_settings', $settings);
+$settings = get_option('namespace_settings', []);
+```
+
+## 6. SCSS Conventions
+
+### 6.1 BEM Naming
+```scss
+.module-block {
+    &__element { }
+    &__element.is-modifier { }
+    &--variant { }
+}
+```
+
+### 6.2 Breakpoints
+```scss
+.module-element {
+    @include breakpoints.respond(tablet) { }
+    @include breakpoints.respond(laptop) { }
+    @include breakpoints.respond(desktop) { }
+}
+```
+
+### 6.3 Nesting Limits
+- Max 3-4 levels
+- Use CSS custom properties for spacing/colors
+
+## 7. JavaScript Conventions
+
+### 7.1 IIFE + jQuery Module Pattern
+```javascript
+(function ($) {
+    'use strict';
+    
+    var module = {
+        init: function () {
+            var self = this;
+            this.cache_dom();
+            this.bind_events();
+        },
+        
+        cache_dom: function () {
+            this.$container = $('.module-selector');
+        },
+        
+        bind_events: function () {
+            $(document).on('click', '.module-trigger', this.handler.bind(this));
+        },
+        
+        handler: function (e) {
+            e.preventDefault();
+            // logic
+        },
+        
+        destroy: function () {
+            $(document).off('.moduleNamespace');
+        }
+    };
+    
+    module.init();
+})(jQuery);
+```
+
+### 7.2 Patterns
+- Delegated events: `$(document).on('click', '.selector', self.handler.bind(self))`
+- Namespaced events: `.moduleNamespace` suffix
+- Abort previous AJAX
+- Debounce input search
+- Batch DOM with DocumentFragment
+
+## 8. Security
+
+### 8.1 Nonce + Capability
+```php
+// Nonce
+wp_create_nonce('action_name');
+wp_verify_nonce($_POST['nonce'], 'action_name');
+
+// Capability
+if (!current_user_can('capability_name')) {
+    wp_die('Insufficient permissions');
+}
+```
+
+### 8.2 Sanitize & Escape
+```php
+// Sanitize
+$safe = sanitize_text_field($raw);
+$id = absint($id);
+
+// Escape
+echo esc_html($output);
+echo esc_url($url);
+echo esc_attr($attr);
+```
+
+## 9. Performance
+
+### 9.1 Autoloaded Options
+```php
+// Never autoload large data
+update_option('key', $data, 'no');
+```
+
+### 9.2 Object Caching
+```php
+wp_cache_set('key', $data, 'group', 3600);
+$data = wp_cache_get('key', 'group');
+```
+
+### 9.3 Query Optimization
+```php
+$query = new WP_Query([
+    'post_type' => 'post',
+    'fields' => 'ids',
+]);
+```
+
+## 10. Testing
+
+### 10.1 PHPUnit
+```php
+class ExampleTest extends WP_UnitTestCase {
+    public function test_example() {
+        $this->assertTrue(true);
+    }
+}
+```
+
+## 11. Deployment
+
+### 11.1 Changelog
+```
+== 1.0.0 ==
+* Initial release
+```
+
+### 11.2 Readme.txt
+```
+Tags: tag1, tag2
+Requires at least: 5.0
+Tested up to: 6.5
+Stable tag: 1.0.0
+License: GPLv2 or later
+```
+
+### 11.3 Activation/Deactivation Hooks
+```php
+register_activation_hook(__FILE__, 'plugin_activate');
+register_deactivation_hook(__FILE__, 'plugin_deactivate');
+```

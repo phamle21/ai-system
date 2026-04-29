@@ -1,6 +1,50 @@
 name: plan
-description: Create high-level implementation plan
+description: Create high-level implementation plan with approach, scope, and validation strategy
 version: 1.0
-steps: []
-rules: []
-output: { type: text }
+
+when_to_use:
+  - before implementing complex features
+  - before refactoring existing code
+  - before making architectural changes
+  - when task requires multiple steps or files
+
+input:
+  - analysis: output from analyze skill
+  - context: { stack, modules, rules }
+  - constraints: time, dependencies, risk tolerance
+
+steps:
+  - Review analysis output to understand scope and complexity
+  - Identify approach: feature, refactor, or fix
+  - List affected modules and dependencies
+  - Define implementation phases (1, 2, 3...)
+  - Specify validation strategy for each phase
+  - Identify risks and mitigation strategies
+  - Estimate token cost for each phase
+  - Output structured plan
+
+rules:
+  - Must base plan on analysis output, not assumptions
+  - Must define clear phases with validation criteria
+  - Must identify dependencies between phases
+  - Must specify validation strategy for each phase
+  - Must identify risks and mitigations
+  - Must estimate token cost per phase
+  - Must respect module boundaries from context
+  - Must prefer incremental changes over big bang
+  - Must define rollback plan for risky changes
+
+output:
+  type: text
+  schema:
+    approach: string
+    phases:
+      - id: number
+        description: string
+        files_affected: string[]
+        validation: string
+        token_estimate: low | medium | high
+    risks:
+      - risk: string
+        mitigation: string
+    rollback_plan: string

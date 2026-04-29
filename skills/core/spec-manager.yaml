@@ -1,0 +1,64 @@
+name: spec-manager
+description: Manage project spec task files — create tasks in correct directory structure, write task file content, update overview changelog, maintain spec version control
+version: 1.0
+
+when_to_use:
+  - after breakdown-tasks generates tasks list
+  - creating new task files in project spec directory
+  - updating overview changelog after task completion
+  - managing spec version control (Draft → Reviewing → Approved)
+
+input:
+  - task_list: output from breakdown-tasks skill
+  - overview_file: path to spec overview file
+  - spec_date: YYYY-MM (for task directory)
+  - issue_id: issue ID for spec directory
+  - author_email: author email for changelog
+
+steps:
+  - Phase 1: Create task directory structure from project spec rules:
+    - specs/issues/[YYYY-MM]/issue-[id]/tasks/
+  - Phase 2: Generate task file content for each task in task_list:
+    - Metadata: task type, author, date
+    - Task description (from breakdown)
+    - Files to modify (from breakdown)
+    - Files to create (from breakdown)
+    - Expected behavior (from breakdown)
+    - Verification steps (from breakdown)
+    - Dependencies (from breakdown)
+    - Complexity level (from breakdown)
+  - Phase 3: Write each task file:
+    - Filename: [Layer]-[Number]-[description].md
+    - Location: project spec directory
+    - Format: Markdown with metadata header
+  - Phase 4: Update overview changelog:
+    - Add entry to Change Log table
+    - Include date, author, description
+  - Phase 5: Update spec metadata:
+    - Update Last Updated timestamp
+    - Update status if needed (Draft → Reviewing)
+
+rules:
+  - Must create directory structure following project spec rules
+  - Must follow project task naming convention from spec rules
+  - Must include all task metadata in each file
+  - Must reference specific files from breakdown output
+  - Must not overwrite existing task files (use unique numbering)
+  - Must update overview changelog after task creation
+  - Must validate task count does not exceed 8 per breakdown
+  - Must preserve project business logic guardrails in task descriptions
+  - Must use English for task descriptions, local language allowed in notes
+  - Must include verification steps in every task file
+
+output:
+  type: text
+  schema:
+    tasks_created: number
+    files_written: string[]
+    directory_created: string
+    overview_updated: boolean
+    changelog_entry:
+      date: string
+      author: string
+      description: string
+    warnings: string[]
