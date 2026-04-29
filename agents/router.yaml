@@ -1,0 +1,245 @@
+name: router
+description: Route incoming request to correct agent, pipeline, and skills based on task classification
+version: 1.0
+
+rules:
+  - Must parse intent before routing (create | fix | refactor | review | debug)
+  - Must detect stack from context or project files before skill selection
+  - Must map task_type to correct pipeline:
+      feature -> build-feature
+      bugfix  -> build-feature (with debug context)
+      refactor -> build-feature (with refactor flag)
+  - Must fall back to core skills when no domain skill matches
+  - Must never route to unknown pipeline — return error instead
+  - Must log route decision for auditability
+
+routes:
+  # WordPress – Plugin Development
+  - task: create plugin
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/plugin-development
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  - task: refactor plugin
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/plugin-development
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  - task: review plugin compliance
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/plugin-directory-guidelines
+      - skills/core/analyze
+
+  # WordPress – Block Development
+  - task: create block
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/block-development
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  - task: fix block
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/block-development
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  # WordPress – Block Themes
+  - task: create block theme
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/block-themes
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  - task: edit theme.json
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/block-themes
+      - skills/core/analyze
+      - skills/core/execute
+
+  - task: create pattern
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/block-themes
+      - skills/core/analyze
+      - skills/core/execute
+
+  # WordPress – REST API
+  - task: add rest endpoint
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/rest-api
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  - task: debug rest endpoint
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/rest-api
+      - skills/core/analyze
+      - skills/core/execute
+
+  # WordPress – Interactivity API
+  - task: add interactivity
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/interactivity-api
+      - skills/wordpress/block-development
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  # WordPress – WP-CLI
+  - task: search replace
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/wpcli-and-ops
+      - skills/core/analyze
+      - skills/core/execute
+
+  - task: manage plugins wpcli
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/wpcli-and-ops
+      - skills/core/analyze
+      - skills/core/execute
+
+  - task: multisite operation
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/wpcli-and-ops
+      - skills/core/analyze
+      - skills/core/execute
+
+  # WordPress – Performance
+  - task: profile performance
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/performance
+      - skills/core/analyze
+      - skills/core/execute
+
+  - task: fix slow endpoint
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/performance
+      - skills/core/analyze
+      - skills/core/execute
+
+  # WordPress – Static Analysis
+  - task: setup phpstan
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/phpstan
+      - skills/core/analyze
+      - skills/core/execute
+
+  # WordPress – Playground
+  - task: spin up playground
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/playground
+      - skills/core/analyze
+      - skills/core/execute
+
+  - task: create blueprint
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/blueprint
+      - skills/wordpress/playground
+      - skills/core/analyze
+      - skills/core/execute
+
+  # WordPress – Abilities API
+  - task: register abilities
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/abilities-api
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  # WordPress – Triage / Detection
+  - task: analyze project
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/project-triage
+      - skills/core/analyze
+
+  # Default fallbacks
+  - task: create middleware
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/middleware/create
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  - task: create page
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/wordpress/plugin-development
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  - task: add api endpoint
+    stack: laravel | nest
+    pipeline: build-feature
+    skills:
+      - skills/backend/api/create
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  - task: fix bug
+    stack: any
+    pipeline: build-feature
+    skills:
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute
+
+  - task: default
+    pipeline: build-feature
+    skills:
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/execute

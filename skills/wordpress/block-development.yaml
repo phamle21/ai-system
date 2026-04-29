@@ -1,0 +1,57 @@
+name: wp-block-development
+description: Gutenberg block development - block.json, attributes, serialization, dynamic rendering, deprecations, viewScriptModule, build tooling
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+
+when_to_use:
+  - creating or updating WordPress blocks
+  - changing block.json (scripts/styles/supports/attributes/render/viewScriptModule)
+  - fixing "block invalid / not saving / attributes not persisting"
+  - adding dynamic rendering (render.php / render_callback)
+  - block deprecations and migrations
+  - build tooling (@wordpress/scripts, @wordpress/create-block, wp-env)
+
+input:
+  - block_name: block namespace/name (e.g. my-plugin/my-block)
+  - block_path: path to block.json if known
+  - task: create | modify | debug
+  - block_model: static | dynamic | interactive
+  - context: { wp_version, is_full_site, build_tool }
+
+steps:
+  - Run triage and list blocks to locate target block root
+  - Enforce apiVersion: 3 (WordPress 6.9+ requirement for iframe editor compatibility)
+  - Pick block model: static (save into post content), dynamic (server-rendered), or interactive (viewScriptModule + Interactivity API)
+  - Update block.json safely (never change name field without migration; add deprecated entries for markup changes)
+  - Register block via PHP using metadata (prefer over JS registration for translations and conditional loading)
+  - Implement edit/save/render: use useBlockProps() for editor, useBlockProps.save() for static save, get_block_wrapper_attributes() for dynamic PHP
+  - For inner blocks: use useInnerBlocksProps() to integrate with wrapper props
+  - For attribute changes: confirm value location (comment delimiter vs HTML vs context); avoid deprecated meta source
+  - For markup changes: add deprecated entries (newest to oldest) with save and optional migrate
+  - Use repo's existing lint/build/test tooling (@wordpress/scripts, wp-env)
+
+rules:
+  - Must use apiVersion: 3 in block.json (WordPress 6.9+)
+  - Must never change block name without adding deprecation entry
+  - Must add deprecated entries when changing saved markup to avoid "Invalid block" errors
+  - Must prefer PHP registration with metadata for dynamic blocks and translations
+  - Must use useBlockProps() in editor, useBlockProps.save() in static save
+  - Must use get_block_wrapper_attributes() in dynamic PHP rendering
+  - Must define source/serialization correctly for attributes to persist
+  - Must avoid the deprecated meta attribute source
+  - Must include all styles in block.json for iframe editor compatibility
+  - Must test with iframe editor enabled when using apiVersion 3
+  - Must use @wordpress/create-block scaffold for new blocks when possible
+  - Must use viewScriptModule for modern module-based view scripts where supported
+
+output:
+  type: code
+  schema:
+    block_name: string
+    block_json_updated: boolean
+    registration_method: php | js
+    rendering_mode: static | dynamic | interactive
+    deprecated_entries: number
+    validation_errors: string[]

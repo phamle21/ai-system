@@ -1,0 +1,51 @@
+name: wp-rest-api
+description: WordPress REST API development - routes, endpoints, schema validation, authentication, response shaping, CPT/taxonomy exposure
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+
+when_to_use:
+  - creating or updating REST routes/endpoints
+  - debugging 401/403/404 errors or permission/nonce issues
+  - adding custom fields/meta to REST responses
+  - exposing custom post types or taxonomies via REST
+  - implementing schema + argument validation
+  - adjusting response links/embedding/pagination
+
+input:
+  - namespace: REST namespace (e.g. my-plugin/v1)
+  - routes: array of route definitions
+  - auth_mode: cookie_nonce | application_passwords | plugin
+  - target_wp_version: WordPress version constraint
+
+steps:
+  - Search for existing REST usage: register_rest_route, WP_REST_Controller, rest_api_init, show_in_rest
+  - Choose approach: expose CPT/taxonomy in wp/v2 (show_in_rest) or custom endpoints (register_rest_route)
+  - Register routes with unique namespace, permission_callback, and correct HTTP method constants
+  - Define args with type, default, required, validate_callback, sanitize_callback
+  - Use rest_ensure_response or WP_REST_Response for responses; WP_Error with status for errors
+  - Add computed fields via register_rest_field; meta via register_meta with show_in_rest
+  - Implement authentication: cookie + X-WP-Nonce for wp-admin, application passwords for external clients
+  - Support _fields, _embed, _method, _envelope, pagination headers (per_page capped at 100)
+
+rules:
+  - Must use unique namespace (vendor/v1); never use wp/* unless core
+  - Must always provide permission_callback (use __return_true for public endpoints)
+  - Must use WP_REST_Server::READABLE/CREATABLE/EDITABLE/DELETABLE constants
+  - Must never read $_GET/$_POST directly in endpoints; use WP_REST_Request
+  - Must prefer JSON Schema validation with rest_validate_value_from_schema and rest_sanitize_value_from_schema
+  - Must not remove core fields from default endpoints; add fields instead
+  - Must return WP_Error with explicit status for errors
+  - Must use rest_ensure_response() or WP_REST_Response for responses
+  - Must use capability checks in permission_callback, not just logged-in check
+  - Must support _fields, _embed, _envelope, pagination on endpoints
+  - Must ensure discovery works (Link header or <link rel="https://api.w.org/">)
+
+output:
+  type: code
+  schema:
+    routes_registered: string[]
+    schema_defined: object
+    permission_callbacks: string[]
+    validation_errors: string[]

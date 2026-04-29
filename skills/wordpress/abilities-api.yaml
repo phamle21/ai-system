@@ -1,0 +1,48 @@
+name: wp-abilities-api
+description: WordPress Abilities API - wp_register_ability, categories, REST exposure (wp-abilities/v1), JS consumption (@wordpress/abilities), permissions checks
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+
+when_to_use:
+  - registering abilities or ability categories in PHP
+  - exposing abilities to clients via REST (wp-abilities/v1)
+  - consuming abilities in JS (@wordpress/abilities)
+  - diagnosing "ability doesn't show up" / "client can't see ability" / "REST returns empty"
+
+input:
+  - ability_id: namespaced ability identifier
+  - ability_label: display label
+  - category: ability category (optional)
+  - task: register | expose | consume | debug
+  - context: { wp_version, is_core_or_plugin, location: plugin | theme | mu-plugin }
+
+steps:
+  - Confirm availability: check if WP core checkout and versions, or if target WP < 6.9 needs Abilities API package
+  - Search existing usage: wp_register_ability, wp_register_ability_category, wp_abilities_api_init, wp-abilities/v1, @wordpress/abilities
+  - Register categories first (if grouping needed) using wp_register_ability_category
+  - Register abilities with stable namespaced id, label, description, category, and meta (readonly: true for informational, show_in_rest: true for client visibility)
+  - Use documented init hooks for Abilities API registration timing
+  - Confirm REST exposure: endpoints under wp-abilities/v1 return expected results
+  - Consume from JS using @wordpress/abilities APIs for client-side access and checks
+  - Ensure build tooling includes the @wordpress/abilities dependency
+
+rules:
+  - Must use stable namespaced id for abilities
+  - Must use wp_register_ability and wp_register_ability_category for registration
+  - Must set meta.show_in_rest: true for abilities visible to clients
+  - Must set meta.readonly: true for informational abilities
+  - Must use documented init hooks for correct registration timing
+  - Must use @wordpress/abilities APIs for client-side consumption
+  - Must use capability checks for authorization, not just logged-in check
+  - Must not invent REST endpoints; use wp-abilities/v1 namespace only
+  - Must confirm target WP version before implementing (may need plugin package for WP < 6.9)
+
+output:
+  type: code
+  schema:
+    abilities_registered: string[]
+    categories_registered: string[]
+    rest_endpoints: string[]
+    validation_errors: string[]

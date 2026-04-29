@@ -1,0 +1,46 @@
+name: wpds
+description: WordPress Design System - UI components, design tokens, patterns, @wordpress/components, @wordpress/ui
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+requires: wpds_mcp_server
+
+when_to_use:
+  - building or reviewing UI in WordPress context (Gutenberg, WooCommerce, WordPress.com, Jetpack)
+  - using WordPress Design System, WPDS, Design System
+  - UI components, design tokens, color primitives, spacing scales, typography
+  - @wordpress/components or @wordpress/ui packages
+
+input:
+  - task: build | review
+  - components_needed: array of component names (optional, query via MCP)
+  - tokens_needed: array of token names (optional, query via MCP)
+  - context: { stack: typescript | react | css }
+
+steps:
+  - Use WPDS MCP server to access canonical documentation (wpds://pages, wpds://components, wpds://design-tokens)
+  - Read relevant documentation before working on WPDS-related tasks
+  - Assume tech stack: TypeScript, React, CSS unless specified otherwise
+  - Build UI adhering to WPDS best practices using fitting components/tokens/patterns
+  - Skip non-UI related aspects (fetching data, localizing strings)
+  - Validate with local lint scripts when available
+  - Provide recap: explain solution, decisions, boundaries (what was left out)
+
+rules:
+  - Must use WPDS MCP server as primary documentation source (wpds://pages, wpds://components/:name, wpds://design-tokens)
+  - Must NOT search web for WPDS documentation; MCP server is authoritative source
+  - Must read relevant documentation before any WPDS-related task
+  - Must assume TypeScript + React + CSS tech stack by default
+  - Must skip non-UI related aspects of requests
+  - Must focus on building UI adhering to WPDS best practices
+  - Must use lint scripts for validation when available in local context
+  - Must provide clear recap explaining solution, decisions, and boundaries
+
+output:
+  type: code
+  schema:
+    components_used: string[]
+    tokens_used: string[]
+    boundaries_explained: string
+    code_snippets: string[]

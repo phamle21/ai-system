@@ -1,0 +1,53 @@
+name: wp-phpstan
+description: PHP static analysis for WordPress projects - phpstan.neon setup, baselines, WordPress-specific typing, third-party plugin classes
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+requires: composer
+
+when_to_use:
+  - setting up or updating phpstan.neon / phpstan.neon.dist
+  - generating or updating phpstan-baseline.neon
+  - fixing PHPStan errors with WordPress-friendly PHPDoc
+  - handling third-party plugin/theme classes safely
+  - configuring WordPress core stubs (szepeviktor/phpstan-wordpress or php-stubs/wordpress-stubs)
+
+input:
+  - analysis_scope: first_party | first_and_third_party
+  - allow_baseline_changes: boolean
+  - allow_composer_deps: boolean
+  - task: setup | fix_errors | update_baseline | configure_stubs
+
+steps:
+  - Run phpstan_inspect script to discover existing PHPStan setup (config, baseline, scripts)
+  - Prefer repo's existing composer script (e.g. composer run phpstan) when present
+  - Ensure WordPress core stubs are loaded (szepeviktor/phpstan-wordpress or php-stubs/wordpress-stubs)
+  - Configure phpstan.neon: focus paths on first-party code, exclude vendor/node_modules/build artifacts
+  - Fix errors with WordPress-specific PHPDoc typing (REST params, hook callbacks, query results, Action Scheduler)
+  - Handle third-party plugin classes: confirm dependency, use existing stubs (woocommerce-stubs, acf-pro-stubs), add narrow ignorePatterns only when needed
+  - Manage baseline as migration tool: generate once for legacy, reduce over time, never baseline new errors
+
+rules:
+  - Must keep paths focused on first-party code (plugin/theme directories)
+  - Must exclude vendor/, node_modules/, build artifacts, and tests unless explicitly analyzed
+  - Must keep ignoreErrors entries narrow and documented
+  - Must prefer correcting types via PHPDoc over ignoring errors
+  - Must type REST endpoint parameters using WP_REST_Request
+  - Must add accurate @param types for hook callback arguments
+  - Must use array shapes or object shapes for database query results
+  - Must confirm third-party dependency is real before adding stubs
+  - Must prefer existing plugin-specific stubs in the repo over new ones
+  - Must generate baseline once for legacy code, then reduce it over time
+  - Must not baseline newly introduced errors
+  - Must not add new Composer dependencies without user confirmation
+
+output:
+  type: text
+  schema:
+    phpstan_level: number
+    error_count_before: number
+    error_count_after: number
+    baseline_included: boolean
+    ignore_errors: string[]
+    errors: string[]

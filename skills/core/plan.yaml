@@ -1,0 +1,6 @@
+name: plan
+description: Create high-level implementation plan
+version: 1.0
+steps: []
+rules: []
+output: { type: text }

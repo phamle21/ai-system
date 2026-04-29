@@ -1,0 +1,54 @@
+name: wp-performance
+description: WordPress performance profiling (backend-only) - profiling, autoloaded options, object caching, cron, HTTP API, database optimization
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+requires: wp_cli
+
+when_to_use:
+  - investigating slow WordPress site/page/endpoint (TTFB, admin, REST, WP-Cron)
+  - generating profiling plan and tooling recommendations
+  - optimizing DB queries, autoloaded options, object caching, cron tasks, remote HTTP calls
+  - backend-only investigation (no browser UI available)
+
+input:
+  - environment: dev | staging | prod
+  - target_path: WordPress root for --path=
+  - target_url: site URL for multisite --url=
+  - symptom: which URL/route/screen is slow
+  - timing: always | sporadic; logged-in | logged-out
+  - restrictions: array of safety constraints
+
+steps:
+  - Confirm write operation permissions and safety restrictions
+  - Capture baseline: TTFB with curl, WP-CLI profiling if available
+  - Run perf_inspect script to detect WP-CLI availability, wp doctor/wp profile, autoloaded options size, object-cache drop-in
+  - Run wp doctor check for fast diagnostics (autoload bloat, SAVEQUERIES, plugin counts, updates)
+  - Deep profiling: wp profile stage → wp profile hook → wp profile eval (in this order)
+  - Use Query Monitor headlessly via REST headers (x-qm-*) and ?_envelope responses
+  - Fix by dominant bottleneck category: DB queries, autoloaded options, object cache misses, remote HTTP, cron
+  - Verify: re-run same measurement, confirm delta, no new PHP errors
+  - For WordPress 6.9: note on-demand CSS for classic themes (30-65% payload reduction), block themes can load with zero render-blocking CSS
+
+rules:
+  - Must measure first before making changes (measure → profile → fix → verify)
+  - Must never install plugins, enable SAVEQUERIES, run load tests, or flush caches in production without approval
+  - Must prefer WP-CLI (doctor/profile) for backend-only investigation
+  - Must capture baseline and re-run same measurement for verification
+  - Must identify ONE primary bottleneck category, not fix everything at once
+  - Must not run SAVEQUERIES or Query Monitor in production unless explicitly approved
+  - Must use --url= for multisite targeting to avoid measuring wrong site
+  - Must eliminate background tasks when profiling to reduce noise
+  - Must use feature flags or staged rollout for risky fixes
+  - For autoloaded options: identify biggest autoloaded options and stop autoloading large blobs
+  - For HTTP API: add timeouts, caching, batching; avoid calling remote APIs on every request
+
+output:
+  type: analysis
+  schema:
+    baseline_metrics: object
+    primary_bottleneck: string
+    recommendations: string[]
+    post_fix_metrics: object
+    errors: string[]

@@ -1,0 +1,34 @@
+name: analyze
+description: Understand user request, detect stack, identify scope and constraints
+version: 1.0
+
+input:
+  - request: natural language description of what user wants
+  - project_root: path to project root
+  - context: { name, stack[], modules[], rules{} }
+
+steps:
+  - Parse user request for intent keywords (create, fix, refactor, add, remove)
+  - Detect tech stack from project context or project_root files
+  - Identify target modules affected
+  - Extract constraints from context.rules
+  - Classify task type: feature | bugfix | refactor | review | debug
+  - Output structured analysis
+
+rules:
+  - Must detect stack from composer.json, package.json, wp-config.php, or context
+  - Must classify task type before proceeding
+  - Must list affected modules explicitly
+  - Must output analysis even if confidence is low
+  - Must avoid guessing stack without evidence
+  - Must compress context to essentials only
+
+output:
+  type: analysis
+  schema:
+    task_type: feature | bugfix | refactor | review | debug
+    stack: string[]
+    modules: string[]
+    complexity: low | medium | high
+    confidence: 0.0-1.0
+    warnings: string[]

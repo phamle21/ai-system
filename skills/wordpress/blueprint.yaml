@@ -1,0 +1,59 @@
+name: blueprint
+description: WordPress Playground Blueprints - JSON declarations for installing plugins/themes, running PHP/SQL, manipulating files, snapshot building
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  node: "20.18+"
+
+when_to_use:
+  - creating, editing, or reviewing WordPress Playground blueprint JSON files
+  - setting up WordPress demo environments declaratively
+  - building reproducible site snapshots for sharing or CI
+  - scripting WordPress setup/automation via JSON blueprints
+
+input:
+  - task: create | edit | review | test
+  - blueprint_path: path to blueprint JSON file
+  - bundle_path: path to bundle directory (optional, for bundled resources)
+  - steps: array of step definitions (if creating new)
+
+steps:
+  - Validate JSON structure: $schema must be "https://playground.wordpress.net/blueprint-schema.json"
+  - Set top-level properties: landingPage, meta (title + author required), preferredVersions (php + wp), features (networking/intl only), constants, plugins, siteOptions, login
+  - Define steps with step name and required properties
+  - For plugin/theme installation: use pluginData/themeData with resources (wordpress.org/plugins, wordpress.org/themes, url, git:directory, literal, literal:directory)
+  - For file operations: writeFile for single files, writeFiles with literal:directory or git:directory for trees
+  - For code execution: runPHP (must require wp-load.php), wp-cli (step name is "wp-cli" with hyphen), runSql
+  - For resources: use proper resource types (wordpress.org/plugins needs slug, url needs url, git:directory needs url+ref+refType)
+  - For git:directory: must set refType when using branch/tag name for ref (only "HEAD" works without it)
+  - For literal:directory: use nested objects for subdirectories, never path separators in keys, values must be plain strings or objects
+  - For bundles: blueprint.json at root, bundled resource type for referencing files, zip plugins/themes before bundling
+  - For testing: inline blueprints via URL fragment, CLI with --blueprint-may-read-adjacent-files for directory bundles
+  - Use shorthand properties (login, plugins, siteOptions, constants) only when execution order doesn't matter; use explicit steps for order-dependent flows
+
+rules:
+  - Must use $schema: "https://playground.wordpress.net/blueprint-schema.json" (NOT .org)
+  - Must include meta.title and meta.author (required)
+  - Must use pluginData/themeData, NEVER deprecated pluginZipFile/themeZipFile
+  - Must use step: "wp-cli" (NOT "cli" or "wpcli")
+  - Must use literal:directory or git:directory as filesTree for writeFiles (NOT plain object)
+  - Must use nested objects for subdirectories in literal:directory files (NOT path separators in keys)
+  - Must require wp-load.php in runPHP code for WordPress functions
+  - Must NEVER invent top-level keys (schema rejects unknown properties)
+  - Must set refType for git:directory when ref is branch/tag name
+  - Must use plain strings (not resource refs) as values in literal:directory files
+  - Must use features.networking and features.intl ONLY (no invented feature keys)
+  - Must use constants: { WP_DEBUG: true } instead of features.debug
+  - Must NOT require wp-load.php in mu-plugin code (mu-plugins already run within WordPress)
+  - Must add --blueprint-may-read-adjacent-files flag for CLI directory bundles
+  - Must use options.activate in installPlugin/installTheme instead of separate activate steps
+  - Shorthands are expanded in unspecified order; use explicit steps when order matters
+
+output:
+  type: code
+  format: json
+  schema:
+    blueprint_valid: boolean
+    steps_defined: number
+    resources_used: string[]
+    validation_errors: string[]

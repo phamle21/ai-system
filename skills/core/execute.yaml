@@ -1,0 +1,36 @@
+name: execute
+description: Run a single subtask by calling appropriate skill with injected context
+version: 1.0
+
+input:
+  - subtask: { id, subtask, skill, depends_on, validation }
+  - context: { name, stack[], modules[], rules{} }
+  - project_root: path to project root
+  - previous_outputs: map of skill_result by subtask_id
+
+steps:
+  - Validate all depends_on steps completed successfully
+  - Load target skill YAML and parse steps/rules
+  - Inject relevant context (stack, modules, rules) — no full project load
+  - Execute skill steps in order
+  - Apply project rules from context
+  - Validate output against subtask.validation
+  - Return result with metadata
+
+rules:
+  - Must only inject context relevant to current subtask
+  - Must never load full project codebase
+  - Must fail fast if dependency validation fails
+  - Must reuse previous_outputs to avoid re-execution
+  - Must log token usage estimate per execution
+  - Must skip if skill not found — return error instead
+
+output:
+  type: code | text
+  schema:
+    subtask_id: number
+    status: success | failed | skipped
+    result: string
+    tokens_used: number
+    skill_called: string
+    errors: string[]

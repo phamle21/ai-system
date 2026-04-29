@@ -1,0 +1,56 @@
+name: wp-plugin-development
+description: WordPress plugin architecture - hooks, lifecycle, Settings API, security, data/cron, packaging
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+
+when_to_use:
+  - creating or refactoring WordPress plugins
+  - implementing hooks (actions/filters)
+  - plugin activation/deactivation/uninstall
+  - Settings API integration
+  - security fixes (nonces, capabilities, sanitization, escaping)
+  - packaging a release
+
+input:
+  - plugin_name: name of the plugin
+  - task: create | modify | review | debug
+  - features: array of required features (hooks, settings, rest, etc.)
+  - context: { is_multisite, wp_version, php_version }
+
+steps:
+  - Run triage to locate plugin entrypoints
+  - Follow predictable architecture: single bootstrap, hooks on load, loader/class for registration, admin-only code behind is_admin()
+  - Implement hooks and lifecycle (activation/deactivation/uninstall) with guardrails
+  - Apply Settings API for admin pages (register_setting, add_settings_section, add_settings_field)
+  - Apply security baseline: validate/sanitize input early, escape output late, nonces + capabilities, $wpdb->prepare for SQL
+  - Handle data storage, cron, migrations if needed
+  - Validate: no fatals on activate, settings save/read correctly, uninstall removes intended data
+
+rules:
+  - Must use plugin header with all required fields (Plugin Name, License, etc.)
+  - Must prefix all functions/classes with unique plugin prefix
+  - Must sanitize input, validate, escape output (SVE pattern)
+  - Must use wp_enqueue_scripts for assets
+  - Must implement activation/deactivation hooks at top-level, not inside other hooks
+  - Must never hardcode credentials or API keys
+  - Must use Settings API for admin pages (register_setting, add_settings_section, add_settings_field)
+  - Must sanitize with sanitize_* functions, escape with esc_* functions
+  - Must check capabilities before admin actions
+  - Must use wp_create_nonce / check_ajax_referer for AJAX
+  - Must never expose sensitive data in REST responses
+  - Must flush rewrite rules only after registering CPTs/rules and only when needed
+  - Must use uninstall.php or register_uninstall_hook for safe uninstall
+  - Must avoid heavy side effects at file load time; load on hooks
+  - Must prefer options for small config; custom tables only if necessary
+  - Must ensure cron tasks are idempotent with manual run paths
+
+output:
+  type: code
+  schema:
+    plugin_files: string[]
+    hooks_registered: string[]
+    admin_pages: string[]
+    rest_endpoints: string[]
+    validation_errors: string[]

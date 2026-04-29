@@ -1,0 +1,27 @@
+name: build-feature
+description: Full pipeline for building a new feature — from analysis to validated execution
+version: 1.0
+
+steps:
+  - analyze: classify task, detect stack, identify scope
+  - breakdown: decompose into atomic subtasks with skill mapping
+  - execute: run each subtask in dependency order, injecting context
+  - validate: check all outputs against subtask validation rules
+  - summarize: produce final report of what was done
+
+rules:
+  - Must fail pipeline if any execute step fails (no silent skips)
+  - Must inject only relevant context per step
+  - Must reuse skill outputs — never re-execute
+  - Must produce summary even on partial failure
+  - Must log token usage across entire pipeline
+
+output:
+  type: text
+  schema:
+    success: boolean
+    steps_completed: number
+    steps_failed: number
+    total_tokens: number
+    summary: string
+    artifacts: string[]

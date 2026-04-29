@@ -1,0 +1,36 @@
+name: breakdown
+description: Decompose task into atomic, executable steps with dependencies
+version: 1.0
+
+input:
+  - analysis: output from analyze skill
+  - context: { modules[], rules{} }
+  - available_skills: skill paths available in system
+
+steps:
+  - Split task into atomic subtasks (each = 1 clear action)
+  - Order subtasks by dependency
+  - Map each subtask to existing skill or mark as manual
+  - Estimate token cost per subtask (low/med/high)
+  - Merge sequential same-skill steps
+  - Output execution plan
+
+rules:
+  - Each subtask must be independently verifiable
+  - Max 8 subtasks per breakdown (split further if more)
+  - Must map to existing skills where possible
+  - Must flag unmapped subtasks explicitly
+  - Must group same-stack work together
+  - Must avoid cross-module coupling in single step
+  - Must respect module boundaries from context
+
+output:
+  type: text
+  schema:
+    plan:
+      - id: number
+        subtask: string
+        skill: skill_path | manual
+        depends_on: number[]
+        token_estimate: low | medium | high
+        validation: string

@@ -1,0 +1,56 @@
+name: wp-wpcli-and-ops
+description: WP-CLI operations - safe search-replace, db export/import, plugin/theme/user/content management, cron, cache, multisite, automation
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+requires: wp_cli
+
+when_to_use:
+  - wp search-replace (URL changes, domain migrations, protocol switch)
+  - DB export/import, resets, inspections (wp db *)
+  - plugin/theme install/activate/update, language packs
+  - cron event listing/running
+  - cache/rewrite flushing
+  - multisite operations (wp site *, --url, --network)
+  - building repeatable scripts (wp-cli.yml, shell scripts, CI jobs)
+
+input:
+  - environment: dev | staging | prod
+  - target_path: WordPress root path for --path=
+  - target_url: site URL for multisite --url=
+  - is_multisite: boolean
+  - task: search-replace | db | plugin | theme | cron | cache | multisite | automation
+  - constraints: array of restrictions (no writes, no plugin installs, maintenance window)
+
+steps:
+  - Confirm environment safety before any write operations
+  - Confirm targeting (--path= and --url= for multisite) to avoid wrong site
+  - Run wpcli_inspect script to verify WP-CLI availability and site targeting
+  - For search-replace: backup (wp db export) → dry-run (wp search-replace --dry-run) → real replace → flush caches/rewrite
+  - For plugin/theme ops: confirm intended site and network before acting
+  - For cron: inspect cron state and run individual events for debugging, not "run everything blindly"
+  - For multisite: decide single site (--url=) or network-wide (--network / iterating sites)
+  - For automation: use wp-cli.yml for defaults, shell scripts with logging and stop-on-error, CI read-only by default
+  - Re-run wpcli_inspect after changes; confirm intended side effects
+
+rules:
+  - Must never run write operations without confirming environment safety
+  - Must always confirm --path= and --url= targeting before running commands
+  - Must make backup (wp db export) before search-replace or risky operations
+  - Must use --dry-run for search-replace to review impact first
+  - Must never run destructive WP-CLI commands on production without explicit approval
+  - Must always specify --url= for multisite to avoid affecting wrong site
+  - Must use wp-cli.yml for repeatable operation defaults (path/url, PHP memory limits)
+  - Must prefer CI jobs to run read-only checks by default
+  - Must handle WP-CLI not available by falling back to Composer, container, or system package installation
+
+output:
+  type: text
+  schema:
+    command_run: string
+    environment: string
+    affected_sites: string[]
+    dry_run: boolean
+    side_effects: string[]
+    errors: string[]

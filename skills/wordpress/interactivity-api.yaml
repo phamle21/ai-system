@@ -1,0 +1,54 @@
+name: wp-interactivity-api
+description: WordPress Interactivity API - data-wp-* directives, stores, viewScriptModule, server-side rendering, hydration, WordPress 6.9 changes
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+
+when_to_use:
+  - building or debugging Interactivity API features
+  - data-wp-interactive, data-wp-on--*, data-wp-bind--*, data-wp-context directives
+  - @wordpress/interactivity store/state/actions
+  - block viewScriptModule / module-based view scripts
+  - hydration issues or "directives don't fire"
+  - performance and server-side rendering alignment
+
+input:
+  - block_name: affected block name
+  - scope: frontend | editor | both
+  - task: create | modify | debug
+  - context: { wp_version, build_tool, has_block_json }
+
+steps:
+  - Detect existing usage: search for data-wp-interactive, @wordpress/interactivity, viewScriptModule
+  - Determine integration style: block with viewScriptModule, theme-level, or plugin-side enhance-existing-markup
+  - Identify store(s): locate store definitions, confirm state shape, actions, callbacks
+  - Server-side rendering: pre-render HTML on server before JS loads (no layout shift, SEO, fast perceived load)
+  - Enable server directive processing: add supports.interactivity: true in block.json or use wp_interactivity_process_directives()
+  - Initialize state/context in PHP: use wp_interactivity_state() for global state, wp_interactivity_data_wp_context() for local context
+  - Define derived state in PHP with closures for correct initial HTML rendering
+  - Implement directives: keep usage minimal and scoped, ensure server markup + client hydration align
+  - Verify: wp-project-triage shows usesInteractivityApi: true, manual smoke test, add Playwright E2E
+
+rules:
+  - Must pre-render HTML on server before outputting for correct initial state (no layout shift)
+  - Must add supports.interactivity: true in block.json for blocks using interactivity
+  - Must use wp_interactivity_process_directives() for themes/plugins without block.json
+  - Must define derived state in PHP with closures when it affects initial HTML rendering
+  - Must NOT use data-wp-ignore (deprecated in WordPress 6.9, breaks context inheritance)
+  - Must use --- separator for multiple directives of same type on one element (WordPress 6.9)
+  - Must keep directive usage minimal and scoped
+  - Must ensure server-rendered markup + client hydration align
+  - Must scope interactivity to smaller subtrees to avoid performance regressions
+  - Must confirm viewScriptModule is enqueued/loaded when directives are inert
+  - Must confirm store namespace matches directive's value
+  - Must confirm no JS errors before hydration
+  - Must not assume getServerState()/getServerContext() persist between page transitions (WordPress 6.9)
+
+output:
+  type: code
+  schema:
+    store_namespaces: string[]
+    directives_used: string[]
+    ssr_enabled: boolean
+    validation_errors: string[]

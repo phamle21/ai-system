@@ -1,0 +1,48 @@
+name: wp-project-triage
+description: Deterministic inspection of a WordPress repository (plugin/theme/block theme/WP core/Gutenberg) producing structured JSON report for workflow guardrails
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+
+when_to_use:
+  - understanding WP repo type before making changes
+  - detecting tooling (Composer, npm, PHPUnit, Playwright, Jest)
+  - identifying test frameworks and version hints
+  - selecting workflow guardrails based on project kind
+
+input:
+  - repo_root: path to WordPress repository root (current working directory)
+
+steps:
+  - Run triage detector: node skills/wp-project-triage/scripts/detect_wp_project.mjs (from wordpress-agent-skills)
+  - Parse JSON output for project.kind, signals, and tooling
+  - Use report to select workflow guardrails: project kinds, PHP/Node tooling, tests, versions
+  - If report missing needed signals, update detector rather than guessing
+
+rules:
+  - Must detect project kind: wp-core | wp-plugin | wp-theme | wp-block-theme | wp-site | gutenberg | unknown
+  - Must output structured JSON with project.kind, signals, tooling, versions
+  - Must never guess project type without filesystem evidence
+  - Must use detector script, not manual heuristics
+  - If kind is unknown, check composer.json, package.json, style.css, block.json, theme.json, wp-content/
+
+output:
+  type: text
+  format: json
+  schema:
+    project:
+      kind: string
+    signals:
+      isWpCoreCheckout: boolean
+      isGutenbergCheckout: boolean
+      isMultisite: boolean
+      usesInteractivityApi: boolean
+      usesAbilitiesApi: boolean
+    tooling:
+      php: object
+      node: object
+    versions:
+      wordpress: string
+      php: string
+      git: string

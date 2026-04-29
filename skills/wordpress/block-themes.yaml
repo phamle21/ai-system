@@ -1,0 +1,52 @@
+name: wp-block-themes
+description: WordPress block theme development - theme.json, templates, template parts, patterns, style variations, Site Editor
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+
+when_to_use:
+  - editing theme.json (presets, settings, styles, per-block styles)
+  - adding or changing templates (templates/*.html) and template parts (parts/*.html)
+  - adding patterns (patterns/*.php) and controlling inserter appearance
+  - adding style variations (styles/*.json)
+  - debugging "styles not applying" / "editor doesn't reflect theme.json"
+
+input:
+  - theme_directory: name of the theme directory
+  - task: create | modify | debug
+  - manifest: site_editor | post_editor | frontend | all
+  - context: { wp_version, is_child_theme }
+
+steps:
+  - Run triage to detect theme roots and key folders
+  - Run detect_block_themes script to locate block themes
+  - Confirm theme type: block theme has theme.json + templates/ and/or parts/
+  - Understand style hierarchy: core defaults → theme.json → child theme → user customizations
+  - Make theme.json changes: settings (UI presets, typography, colors, layout, spacing) vs styles (CSS-like rules)
+  - Create/edit templates under templates/ (HTML files)
+  - Create/edit template parts under parts/ (must not be nested in subdirectories)
+  - Add patterns under patterns/ (PHP files) for theme-owned patterns
+  - Add style variations under styles/ (JSON files); note: user selection stored in DB may override file changes
+  - Verify Site Editor reflects changes, frontend renders correctly, no user customizations overriding defaults
+
+rules:
+  - Must confirm target theme directory when multiple themes exist
+  - Must understand style hierarchy: user customizations can override theme.json
+  - Must not nest template parts in subdirectories under parts/
+  - Must be explicit about minimum supported WordPress version (theme.json schema versions differ)
+  - Must not assume file changes update user-facing styles immediately (user selection stored in DB)
+  - Must check for invalid theme.json shape/typos that prevent application
+  - Must ensure templates/parts are in correct folders
+  - Must run build/lint scripts if assets involved (fonts, custom JS/CSS)
+  - For new block themes: prefer known-good scaffold or export from WP environment over guessing
+
+output:
+  type: code
+  schema:
+    theme_directory: string
+    theme_json_updated: boolean
+    templates_added: string[]
+    patterns_added: string[]
+    style_variations_added: string[]
+    validation_errors: string[]

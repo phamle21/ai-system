@@ -1,0 +1,55 @@
+name: wp-playground
+description: WordPress Playground - disposable WP instances, @wp-playground/cli (server, run-blueprint, build-snapshot), version switching, blueprints, Xdebug
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  node: "20.18+"
+
+when_to_use:
+  - spinning up disposable WordPress to test plugin/theme without full stack
+  - running or iterating on Playground Blueprints locally
+  - building reproducible site snapshots for sharing or CI
+  - switching WP/PHP versions to reproduce issues
+  - debugging plugin/theme code with Xdebug in isolated Playground
+
+input:
+  - task: spin-up | run-blueprint | build-snapshot | debug | version-switch
+  - project_path: plugin or theme root to mount
+  - wp_version: WordPress version (optional, default latest)
+  - php_version: PHP version (optional, default 8.3)
+  - blueprint_path: blueprint file or URL
+  - needs_xdebug: boolean
+  - port: preferred port (default 9400)
+
+steps:
+  - Confirm Node >= 20.18 before running CLI
+  - For spin-up: npx @wp-playground/cli server --auto-mount (opens localhost:9400)
+  - For manual mounts: --mount=/host/path:/vfs/path (repeatable), --mount-before-install for bootstrapping
+  - For blueprints: npx @wp-playground/cli run-blueprint --blueprint=<file-or-url>
+  - For snapshots: npx @wp-playground/cli build-snapshot --blueprint=<file> --outfile=./site.zip
+  - For debugging: start with --xdebug, connect IDE to host/port from CLI output
+  - For version switching: --wp=<version> and --php=<version>
+  - For browser-only: URL fragments or blueprint-url query param on playground.wordpress.net
+  - Verify mounted code is active (plugin listed/active; theme selected)
+
+rules:
+  - Must NEVER point Playground at production data (ephemeral, SQLite-backed)
+  - Must confirm Node >= 20.18 before running CLI
+  - Must ensure mounted code is clean of secrets (Playground copies files into in-memory FS)
+  - Must use absolute paths for --mount
+  - Must add --blueprint-may-read-adjacent-files for local blueprint assets
+  - Must use --wp= and --php= for version pinning
+  - Must use pluginData/themeData not deprecated pluginZipFile/themeZipFile
+  - Must use skip-wordpress-setup for classic full installs already present
+  - Must handle port conflicts with --port=<free-port>
+  - For browser-only embedding: use playground.wordpress.net, not playground.wordpress.org
+
+output:
+  type: text
+  schema:
+    url: string
+    wp_version: string
+    php_version: string
+    mounted_paths: string[]
+    blueprint_steps: number
+    errors: string[]

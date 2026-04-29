@@ -1,0 +1,6 @@
+name: summarize
+description: Produce summary report
+version: 1.0
+steps: []
+rules: []
+output: { type: text }

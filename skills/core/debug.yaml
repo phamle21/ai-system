@@ -1,0 +1,6 @@
+name: debug
+description: Identify and diagnose issues
+version: 1.0
+steps: []
+rules: []
+output: { type: analysis }

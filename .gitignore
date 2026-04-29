@@ -1,0 +1,24 @@
+# cache
+.cache/
+.tmp/
+
+# logs
+logs/
+*.log
+
+# runtime
+dist/
+build/
+
+# local config
+.env
+.env.local
+
+# AI generated temp
+.generated/
+.ai-cache/
+.ai-output/
+
+# OS
+.DS_Store
+Thumbs.db

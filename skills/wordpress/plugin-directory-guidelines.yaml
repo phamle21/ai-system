@@ -1,0 +1,56 @@
+name: wp-plugin-directory-guidelines
+description: WordPress.org Plugin Directory guidelines - GPL compliance, naming rules, trialware restrictions, 18 submission requirements
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "7.2.24+"
+
+when_to_use:
+  - reviewing WordPress plugins for WordPress.org directory compliance
+  - checking GPL license compatibility for plugins or bundled libraries
+  - verifying license headers in plugin files
+  - identifying guideline violations before submission
+  - evaluating premium/upsell flows, license checks, or freemium positioning
+  - reviewing "teaser" or "preview" UI for trialware violations
+  - answering questions about WordPress.org Plugin Directory requirements
+
+input:
+  - plugin_files: paths to plugin source files for review
+  - plugin_header: plugin header metadata (Plugin Name, Text Domain, etc.)
+  - readme_content: plugin readme.txt content (optional)
+  - task: review | fix | check
+
+steps:
+  - Check plugin's license header against valid license headers (GPL-2.0-or-later, GPL-3.0-or-later, GPLv2 or later)
+  - Walk through 18 guidelines checklist (special attention to guidelines 1, 4, 5, 7, 8, 17)
+  - Confirm trialware/freemium compliance
+  - For bundled third-party code: verify license compatibility (GPL-compatible: MIT, BSD, ISC, zlib, Boost; conditional: Apache-2.0, MPL-2.0)
+  - Flag common GPL violations: split licensing, obfuscated code, restrictive clauses, GPL-incompatible bundles
+  - Check naming rules: specific and function-related, trademark connectors (for/with/using/and), no banned terms
+  - Check slug: lowercase, hyphenated, <= 50 chars, avoids blocked terms
+  - For edge cases: consult GNU GPL FAQ and GNU license list
+
+rules:
+  - Must require valid License: header in main plugin file (GPL-2.0-or-later recommended)
+  - Must require License URI: header pointing to GPL text
+  - Must check ALL bundled libraries have GPL-compatible licenses
+  - Must flag split licensing (code GPL but premium features proprietary)
+  - Must flag any restrictive clauses beyond what GPL allows
+  - Must flag obfuscated code (violates spirit of source code availability)
+  - Must verify header name and readme name match
+  - Must check name has at least 5 alphanumeric characters, not a placeholder
+  - Must check name avoids keyword stuffing and trademark portmanteaus
+  - Must check slug is lowercase, hyphenated, <= 50 chars
+  - Must use "for", "with", "using", "and" as connectors before trademark/project names
+  - Must NOT guess license compatibility; check GNU license list for ambiguous licenses
+  - Must cite Guideline 1 and include file path + exact license string for licensing issues
+
+output:
+  type: analysis
+  schema:
+    guidelines_passed: string[]
+    guidelines_failed: string[]
+    license_status: compliant | non_compliant | needs_review
+    naming_issues: string[]
+    remediation: string[]
+    errors: string[]
