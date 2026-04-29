@@ -1,0 +1,315 @@
+name: wp-admin-ui
+description: WordPress admin UI — metaboxes, columns, filters for post types and taxonomies
+version: 1.0
+source_patterns: jrr-core (mu-plugin), WordPress PHP 8.0+
+
+when_to_use:
+  - adding custom metaboxes to post type or taxonomy edit screens
+  - adding custom columns to admin list tables (posts or terms)
+  - adding custom dropdown filters to admin list tables
+  - saving metabox data with nonce and capability checks
+  - rendering custom column content with data from meta/taxonomy
+  - filtering post/term lists by taxonomy or meta values
+  - working alongside Pods framework for CPT fields
+
+# ============================================================
+# PATTERN 1: METABOX
+# ============================================================
+#
+# Class-based module in jrr-core:
+#   src/Modules/PostType/{CPT}/Metabox/{Name}Metabox.php
+#
+# Example: RiderSeasonTabsMetabox, RaceResultsImportMetabox,
+#          RaceStandingImportMetabox, RiderCommentsMetabox
+#
+# Structure:
+#
+#   final class RaceResultsImportMetabox {
+#       public function __construct() {
+#           add_action('add_meta_boxes', [$this, 'register_metabox']);
+#           add_action('admin_enqueue_scripts', [$this, 'scripts']);
+#           add_action('wp_ajax_{action}', [$this, 'ajax_handler']);
+#       }
+#
+#       public function register_metabox(): void {
+#           $screen = get_current_screen();
+#           if (!$screen) return;
+#           if (($screen->action ?? '') === 'add') return; // hide on Add screen
+#
+#           add_meta_box(
+#               'jrr_{slug}',
+#               __('Title', 'textdomain'),
+#               [$this, 'render_metabox'],
+#               '{post_type}',
+#               'normal',       // normal | advanced | side
+#               'high'          // high | default | low
+#           );
+#       }
+#
+#       public function render_metabox(\WP_Post $post): void {
+#           $data = get_post_meta($post->ID, '{meta_key}', true);
+#           // Escape all output
+#           echo esc_html($data);
+#       }
+#
+#       public function save(int $post_id): void {
+#           if (!isset($_POST['{nonce_field}'])
+#               || !wp_verify_nonce($_POST['{nonce_field}'], '{nonce_action}')) {
+#               return;
+#           }
+#           if (!current_user_can('edit_post', $post_id)) {
+#               return;
+#           }
+#           // Sanitize and save
+#           update_post_meta($post_id, '{meta_key}', sanitize_text_field($_POST['field']));
+#       }
+#   }
+#
+# Key points:
+# - Always check $screen->action === 'add' to skip metabox on new post screen
+# - Always check get_current_screen()->post_type to target correct CPT
+# - Use add_meta_boxes (generic) or add_meta_boxes_{post_type} (specific) hook
+# - AJAX handlers: wp_ajax_{action} (logged-in) + wp_ajax_nopriv_{action} (optional)
+# - Create nonce with wp_create_nonce('{action}') and verify with wp_verify_nonce()
+# - Use check_ajax_referer() inside AJAX handlers
+# - Enqueue scripts via admin_enqueue_scripts, localize with wp_localize_script()
+# - Render views via require() or inline HTML with proper escaping
+
+# ============================================================
+# PATTERN 2: CUSTOM COLUMN — POST TYPE
+# ============================================================
+#
+# Class-based module:
+#   src/Modules/PostType/{CPT}/List/{Name}Column.php
+#
+# Example: RiderSeasonColumn
+#
+# Structure:
+#
+#   final class RiderSeasonColumn {
+#       private string $postType = 'rider';
+#       private string $taxonomy = 'jrr_season';
+#
+#       public function __construct() {
+#           add_filter("manage_{$this->postType}_posts_columns", [$this, 'addColumn']);
+#           add_action("manage_{$this->postType}_posts_custom_column", [$this, 'renderColumn'], 10, 2);
+#       }
+#
+#       public function addColumn(array $columns): array {
+#           $new = [];
+#           foreach ($columns as $key => $label) {
+#               $new[$key] = $label;
+#               // chèn sau title column
+#               if ($key === 'title') {
+#                   $new['column_slug'] = __('Column Label', 'textdomain');
+#               }
+#           }
+#           // fallback nếu không có title
+#           if (!isset($new['column_slug'])) {
+#               $new['column_slug'] = __('Column Label', 'textdomain');
+#           }
+#           return $new;
+#       }
+#
+#       public function renderColumn(string $column, int $postId): void {
+#           if ($column !== 'column_slug') return;
+#
+#           // Lấy dữ liệu từ meta, taxonomy, hoặc Pods
+#           $terms = get_the_terms($postId, 'jrr_season');
+#           if (!empty($terms) && !is_wp_error($terms)) {
+#               echo esc_html(implode(', ', wp_list_pluck($terms, 'name')));
+#           } else {
+#               echo '<span style="opacity:.6">—</span>';
+#           }
+#       }
+#   }
+#
+# Key points:
+# - Use manage_{post_type}_posts_columns (FILTER) to add column definition
+# - Use manage_{post_type}_posts_custom_column (ACTION) to render content
+# - Loop and insert positionally (after 'title' or other anchor column)
+# - Never replace $columns array — always merge/insert
+# - Escape ALL output: esc_html(), esc_attr(), esc_url()
+# - Use <span style="opacity:.6">—</span> for empty values (JRR convention)
+
+# ============================================================
+# PATTERN 3: CUSTOM COLUMN — TAXONOMY
+# ============================================================
+#
+# Class-based module:
+#   src/Modules/Taxonomy/{Tax}/Admin/ListTableColumns.php
+#
+# Example: RacingClass ListTableColumns
+#
+# Structure:
+#
+#   class ListTableColumns {
+#       private string $taxonomy = 'racing_class';
+#
+#       public function __construct() {
+#           add_filter("manage_edit-{$this->taxonomy}_columns", [$this, 'add_columns']);
+#           add_filter("manage_{$this->taxonomy}_custom_column", [$this, 'render_columns'], 10, 3);
+#           add_filter("manage_edit-{$this->taxonomy}_sortable_columns", [$this, 'sortable_columns']);
+#           add_filter('terms_clauses', [$this, 'sort_terms_by_meta']);
+#           add_action('restrict_manage_terms', [$this, 'add_filter_dropdown']);
+#       }
+#
+#       public function add_columns($columns): array {
+#           // Cột drag handle chèn đầu tiên
+#           $columns = array_slice($columns, 0, 1, true)
+#               + ['drag' => '']
+#               + array_slice($columns, 1, null, true);
+#           $columns['menu_order'] = 'Order';
+#           $columns['is_sport_class'] = 'Sport Class';
+#           return $columns;
+#       }
+#
+#       public function render_columns($content, $column, $term_id) {
+#           if ($column === 'menu_order') {
+#               $order = get_term_meta($term_id, 'menu_order', true);
+#               return $order !== '' ? (int) $order : '—';
+#           }
+#           if ($column === 'is_sport_class') {
+#               $val = get_term_meta($term_id, 'is_sport_class', true);
+#               return !empty($val)
+#                   ? '<span style="color:#00a000;font-weight:bold;">✓ Yes</span>'
+#                   : '<span style="color:#999;">—</span>';
+#           }
+#           return $content;
+#       }
+#   }
+#
+# Key points:
+# - Post type columns: manage_{post_type}_posts_custom_column (ACTION, 2 params: $column, $post_id)
+# - Taxonomy columns: manage_{taxonomy}_custom_column (FILTER, 3 params: $content, $column, $term_id)
+# - For sortable taxonomy columns: use terms_clauses filter to customize SQL ORDER BY
+# - For taxonomy filters: use restrict_manage_terms instead of restrict_manage_posts
+
+# ============================================================
+# PATTERN 4: LIST FILTER (POST TYPE)
+# ============================================================
+#
+# Class-based module:
+#   src/Modules/PostType/{CPT}/List/{Name}Filter.php
+#
+# Example: AddSeasonFilter
+#
+# Structure:
+#
+#   class AddSeasonFilter {
+#       private string $postType = 'rider';
+#       private string $taxonomy = 'jrr_season';
+#
+#       public function __construct() {
+#           add_action('restrict_manage_posts', [$this, 'render_filter_dropdown']);
+#           add_filter('pre_get_posts', [$this, 'apply_filter_query']);
+#       }
+#
+#       public function render_filter_dropdown(string $post_type): void {
+#           if ($post_type !== $this->postType) return;
+#
+#           $terms = get_terms([
+#               'taxonomy' => $this->taxonomy,
+#               'hide_empty' => false,
+#               'orderby' => 'name',
+#               'order' => 'DESC',
+#           ]);
+#           if (empty($terms) || is_wp_error($terms)) return;
+#
+#           $selected = isset($_GET[$this->taxonomy])
+#               ? (int) $_GET[$this->taxonomy]
+#               : 0;
+#
+#           echo '<select name="' . esc_attr($this->taxonomy) . '" id="' . esc_attr($this->taxonomy) . '" class="postform">';
+#           echo '<option value="">', esc_html__('All', 'textdomain'), '</option>';
+#           foreach ($terms as $term) {
+#               printf(
+#                   '<option value="%s" %s>%s</option>',
+#                   esc_attr($term->term_id),
+#                   selected($selected, $term->term_id, false),
+#                   esc_html($term->name)
+#               );
+#           }
+#           echo '</select>';
+#       }
+#
+#       public function apply_filter_query(\WP_Query $query): void {
+#           global $pagenow;
+#           if (!is_admin() || !$query->is_main_query() || $pagenow !== 'edit.php') return;
+#
+#           if (isset($_GET['post_type']) && $_GET['post_type'] === $this->postType
+#               && isset($_GET[$this->taxonomy]) && $_GET[$this->taxonomy] !== '') {
+#               $query->set('tax_query', [
+#                   [
+#                       'taxonomy' => $this->taxonomy,
+#                       'field'    => 'term_id',
+#                       'terms'    => (int) $_GET[$this->taxonomy],
+#                   ]
+#               ]);
+#           }
+#       }
+#   }
+#
+# Key points:
+# - restrict_manage_posts receives $post_type as parameter
+# - Always check is_main_query() + is_admin() + $pagenow === 'edit.php'
+# - Use $_GET to read filter value
+# - Use tax_query for taxonomy filters, meta_query for meta filters
+# - For meta value filters: use $query->set('meta_key', ...)->set('meta_value', ...)
+# - Preserve dropdown with class="postform" for consistent WP admin styling
+# - selected() helper for marking current selection
+
+# ============================================================
+# PATTERN 5: WORKING WITH PODS
+# ============================================================
+#
+# Pods fields are stored as post_meta / term_meta under the same key.
+# Pods config lives in: pods-bootstrap/pods-config/{post_type|taxonomy}-{name}.json
+#
+# Accessing Pods fields:
+#   // Via post meta (recommended, no Pods dependency)
+#   $value = get_post_meta($post_id, 'field_name', true);
+#   $value = get_term_meta($term_id, 'field_name', true);
+#
+#   // Via Pods API (if Pods is available)
+#   $pod = pods('{post_type}', $post_id);
+#   $value = $pod->field('field_name');
+#
+# Registering Pods fields in JSON config (pods-bootstrap/pods-config/):
+#   {
+#       "labels": {...},
+#       "fields": {
+#           "field_name": {
+#               "label": "Field Label",
+#               "type": "text",
+#               "register_meta_integration": "0"
+#           }
+#       }
+#   }
+#
+# Key points:
+# - Pods fields are stored as post_meta/term_meta — use get_post_meta() to access
+# - Check pods-bootstrap/pods-config/ for existing field definitions before adding new ones
+# - Do NOT duplicate field definitions
+# - register_meta_integration: "0" means Pods manages the field directly
+
+# ============================================================
+# RULES
+# ============================================================
+rules:
+  - Metabox registration: use add_meta_boxes hook, check $screen->action !== 'add' to skip new-post screen
+  - Metabox targeting: always check get_current_screen()->post_type matches target CPT
+  - Metabox save: always check nonce + capability (current_user_can) before saving
+  - AJAX handlers: use check_ajax_referer() for nonce, wp_send_json_success() / wp_send_json_error() for response
+  - Post type column: use manage_{post_type}_posts_columns (FILTER) + manage_{post_type}_posts_custom_column (ACTION, 2 params)
+  - Taxonomy column: use manage_edit-{taxonomy}_columns (FILTER) + manage_{taxonomy}_custom_column (FILTER, 3 params with $content)
+  - Column positioning: never replace $columns array, always merge/insert by position
+  - Filter dropdown: use restrict_manage_posts (post type) or restrict_manage_terms (taxonomy), class="postform"
+  - Filter query: check is_main_query() + is_admin() + $pagenow in pre_get_posts callback
+  - Always escape output: esc_html(), esc_attr(), esc_url()
+  - Empty value convention: <span style="opacity:.6">—</span>
+  - Pods: use get_post_meta/get_term_meta to access fields, never duplicate Pod definitions
+
+# ============================================================
+# SKIPPED: REST API, Gutenberg blocks, block themes, interactivity API
+# ============================================================
