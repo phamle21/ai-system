@@ -201,6 +201,174 @@ routes:
       - skills/wordpress/project-triage
       - skills/core/analyze
 
+  # Laravel – Best Practices
+  - task: write laravel code
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/best-practices
+      - skills/laravel/models
+      - skills/core/analyze
+      - skills/core/execute
+
+  - task: review laravel code
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/best-practices
+      - skills/core/analyze
+
+  - task: refactor laravel
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/best-practices
+      - skills/core/analyze
+      - skills/core/execute
+
+  # Laravel – Models & Migrations
+  - task: create model
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/models
+      - skills/laravel/best-practices
+      - skills/core/execute
+
+  - task: create migration
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/migrations
+      - skills/laravel/best-practices
+      - skills/core/execute
+
+  - task: modify database schema
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/migrations
+      - skills/laravel/best-practices
+      - skills/core/analyze
+      - skills/core/execute
+
+  # Laravel – Livewire Components
+  - task: create livewire component
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/livewire-development
+      - skills/laravel/livewire-view
+      - skills/frontend/design-system
+      - skills/core/execute
+
+  - task: modify livewire component
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/livewire-development
+      - skills/frontend/design-system
+      - skills/core/analyze
+      - skills/core/execute
+
+  - task: fix livewire
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/livewire-development
+      - skills/core/debug
+      - skills/core/analyze
+      - skills/core/execute
+
+  # Laravel – Routing
+  - task: add route
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/laravel/routing
+      - skills/laravel/best-practices
+      - skills/core/execute
+
+  # Laravel – Testing
+  - task: write tests
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/testing/pest-testing
+      - skills/core/execute
+
+  - task: fix tests
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/testing/pest-testing
+      - skills/core/debug
+      - skills/core/analyze
+
+  - task: add pest test
+    stack: laravel
+    pipeline: build-feature
+    skills:
+      - skills/testing/pest-testing
+      - skills/core/execute
+
+  # Frontend – Tailwind CSS
+  - task: fix styling
+    stack: laravel | wordpress
+    pipeline: build-feature
+    skills:
+      - skills/frontend/tailwindcss-development
+      - skills/frontend/design-system
+      - skills/core/execute
+
+  - task: fix UI
+    stack: any
+    pipeline: build-feature
+    skills:
+      - skills/frontend/tailwindcss-development
+      - skills/core/analyze
+      - skills/core/execute
+
+  - task: responsive layout
+    stack: laravel | wordpress
+    pipeline: build-feature
+    skills:
+      - skills/frontend/tailwindcss-development
+      - skills/frontend/responsive-design
+      - skills/core/execute
+
+  - task: dark mode
+    stack: laravel | wordpress
+    pipeline: build-feature
+    skills:
+      - skills/frontend/tailwindcss-development
+      - skills/core/execute
+
+  # Blade & Layout
+  - task: create view
+    stack: laravel | wordpress
+    pipeline: build-feature
+    skills:
+      - skills/frontend/blade-components
+      - skills/frontend/blade-layouts
+      - skills/core/execute
+
+  - task: create blade component
+    stack: laravel | wordpress
+    pipeline: build-feature
+    skills:
+      - skills/frontend/blade-components
+      - skills/frontend/design-system
+      - skills/core/execute
+
+  - task: create page layout
+    stack: laravel | wordpress
+    pipeline: build-feature
+    skills:
+      - skills/frontend/blade-layouts
+      - skills/frontend/design-system
+      - skills/core/execute
+
   # Default fallbacks
   - task: create middleware
     stack: laravel

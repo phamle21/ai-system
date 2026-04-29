@@ -1,0 +1,334 @@
+name: livewire-development
+description: Use for any task involving Livewire 4. Covers creating components, debugging reactivity, real-time validation, drag-and-drop, loading states, converting between formats (SFC/MFC/class-based), and performance optimization.
+version: 1.0
+
+---
+
+## CONTEXT
+
+Livewire 4.1 with Laravel 13. For Daily Logwork project specifically: class-based components in `App\Livewire\[Module]\[Component]` with views in `resources/views/livewire/[module]/[component].blade.php`.
+
+---
+
+## COMPONENT FORMATS
+
+### Class-Based (Daily Logwork convention)
+```bash
+php artisan make:livewire DailyReport\Index
+```
+Creates: `app/Livewire/DailyReport/Index.php` + `resources/views/livewire/daily-report/index.blade.php`
+
+### Single-File Component (SFC - Livewire 4 default)
+```bash
+php artisan make:livewire create-post
+```
+Creates: `resources/views/components/⚡create-post.blade.php`
+
+### Converting Between Formats
+```bash
+php artisan livewire:convert create-post
+```
+
+---
+
+## BASIC USAGE
+
+### Class-Based Component Example
+```php
+<?php
+
+namespace App\Livewire\DailyReport;
+
+use Livewire\Component;
+
+class Index extends Component
+{
+    public string $project = '';
+    public string $reportDate = '';
+    public array $todayTasks = [];
+    public array $tomorrowTasks = [];
+    public int $qualityRating = 0;
+    public int $spiritRating = 0;
+    public string $notes = '';
+    public bool $submitToGform = false;
+
+    public function mount(): void
+    {
+        $this->reportDate = today()->toDateString();
+    }
+
+    public function addTodayTask(): void
+    {
+        $this->todayTasks[] = [
+            'id' => uniqid(),
+            'description' => '',
+            'progress' => 0,
+            'expected_date' => today()->toDateString(),
+        ];
+    }
+
+    public function removeTodayTask(string $id): void
+    {
+        if (count($this->todayTasks) > 1) {
+            $this->todayTasks = array_values(array_filter(
+                $this->todayTasks,
+                fn($t) => $t['id'] !== $id
+            ));
+        }
+    }
+
+    public function save(): void
+    {
+        $this->validate([
+            'project' => 'required|string',
+            'reportDate' => 'required|date',
+            'todayTasks' => 'required|array|min:1',
+            'todayTasks.*.description' => 'required|string|max:500',
+            'todayTasks.*.progress' => 'required|integer|min:0|max:100',
+            'qualityRating' => 'required|integer|min:1|max:5',
+            'spiritRating' => 'required|integer|min:1|max:5',
+        ]);
+
+        // Save logic here
+        session()->flash('message', 'Report saved successfully!');
+        $this->redirectRoute('daily-report');
+    }
+
+    public function render()
+    {
+        return view('livewire.daily-report.index', [
+            'projectOptions' => \App\Models\DailyReport::getProjectOptions(),
+        ]);
+    }
+}
+```
+
+---
+
+## RULES
+
+### Reactivity
+- Public properties are reactive — `wire:model` binds to them
+- `wire:model.live` for instant updates (selects, text inputs)
+- `wire:model.defer` for batched updates (non-critical fields like notes)
+- `wire:model.debounce-500ms` for textareas
+- `wire:model.deep` for nested array bindings
+
+### Dynamic Lists
+- Always use `wire:key` on all dynamic lists
+- Generate unique IDs with `uniqid()` for dynamic list items
+- Reindex arrays with `array_values()` after `array_filter()`
+- Minimum 1 item check before allowing removal
+
+### Form Handling
+- Validate with `$this->validate()` — use Laravel validation rules
+- Use `$this->addError()` for field-level errors
+- Use `$this->dispatch()` for events (SweetAlert2, flash messages)
+- Use `$this->redirectRoute()` for navigation after success
+- Form submission: `wire:submit="save"`
+
+### Lifecycle Hooks
+- `mount()` to initialize component state
+- `render()` to return view and pass data
+- Action methods for user interactions
+
+---
+
+## BLADE VIEW EXAMPLE
+
+```blade
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <form wire:submit="save">
+        <!-- Project -->
+        <div class="mb-6">
+            <label for="project" class="text-sm font-medium text-slate-700 mb-2 block">
+                Project
+            </label>
+            <select id="project" wire:model.live="project"
+                    class="w-full h-9 border border-slate-200 rounded-lg px-3">
+                <option value="">Select project...</option>
+                @foreach($projectOptions as $opt)
+                    <option value="{{ $opt }}">{{ $opt }}</option>
+                @endforeach
+            </select>
+            @error('project')
+                <span class="text-red-600 text-sm mt-1">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <!-- Today Tasks -->
+        <div class="mb-6 space-y-2">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-semibold text-slate-900">Today's Tasks</h3>
+                <button type="button" wire:click="addTodayTask"
+                        class="h-9 px-3 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">
+                    + Add Task
+                </button>
+            </div>
+
+            @foreach($todayTasks as $index => $task)
+                <div wire:key="{{ $task['id'] }}"
+                     class="flex gap-2 items-start p-2 rounded-lg border border-slate-200 group">
+                    <input type="text"
+                           wire:model.live="todayTasks.{{ $index }}.description"
+                           placeholder="Task description..."
+                           class="flex-1 h-8 border border-slate-200 rounded-lg px-3 text-sm" />
+
+                    <input type="number" min="0" max="100"
+                           wire:model.live="todayTasks.{{ $index }}.progress"
+                           class="w-20 h-8 border border-slate-200 rounded-lg px-2 text-sm text-center" />
+
+                    @if($task['progress'] < 100)
+                        <input type="date"
+                               wire:model.live="todayTasks.{{ $index }}.expected_date"
+                               class="w-32 h-8 border border-slate-200 rounded-lg px-2 text-sm" />
+                    @endif
+
+                    @if(count($todayTasks) > 1)
+                        <button type="button"
+                                wire:click="removeTodayTask('{{ $task['id'] }}')"
+                                class="h-8 w-8 flex items-center justify-center text-red-600 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-red-50">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+
+        <!-- Ratings -->
+        <div class="mb-6 grid grid-cols-2 gap-4">
+            <div>
+                <label class="text-sm font-medium text-slate-700 mb-2 block">Quality</label>
+                <div class="flex gap-1">
+                    @for($i = 1; $i <= 5; $i++)
+                        <button type="button"
+                                wire:click="$set('qualityRating', {{ $i }})"
+                                class="flex-1 h-10 {{ $qualityRating >= $i ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400' }} rounded-lg transition-all duration-150">
+                            {{ $i }}
+                        </button>
+                    @endfor
+                </div>
+            </div>
+
+            <div>
+                <label class="text-sm font-medium text-slate-700 mb-2 block">Spirit</label>
+                <div class="flex gap-1">
+                    @for($i = 1; $i <= 5; $i++)
+                        <button type="button"
+                                wire:click="$set('spiritRating', {{ $i }})"
+                                class="flex-1 h-10 {{ $spiritRating >= $i ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400' }} rounded-lg transition-all duration-150">
+                            {{ $i }}
+                        </button>
+                    @endfor
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex gap-3 items-center">
+            <button type="submit"
+                    class="h-10 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-150">
+                <span wire:loading.remove>Save Report</span>
+                <span wire:loading>Saving...</span>
+            </button>
+
+            <label class="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" wire:model.live="submitToGform" class="rounded" />
+                Submit to Google Form
+            </label>
+        </div>
+    </form>
+</div>
+```
+
+---
+
+## COMMON PATTERNS
+
+### Add item
+```php
+public function addTask(): void {
+    $this->tasks[] = ['id' => uniqid(), 'description' => '', 'progress' => 0];
+}
+```
+
+### Remove item
+```php
+public function removeTask(string $id): void {
+    if (count($this->tasks) > 1) {
+        $this->tasks = array_values(array_filter(
+            $this->tasks, fn($t) => $t['id'] !== $id
+        ));
+    }
+}
+```
+
+### Update item
+```php
+public function updateTask(string $id, string $field, mixed $value): void {
+    foreach ($this->tasks as &$task) {
+        if ($task['id'] === $id) {
+            $task[$field] = $value;
+            break;
+        }
+    }
+}
+```
+
+### Save with flash message
+```php
+public function save(): void {
+    $this->validate([...]);
+    // Business logic...
+    session()->flash('message', 'Success!');
+    $this->redirectRoute('route.name');
+}
+```
+
+---
+
+## LIVERWIRE 4 SPECIFICS
+
+### New Features
+- Islands (`@island`) for isolated update regions
+- Async actions (`wire:click.async`, `#[Async]`) for parallel execution
+- Deferred/bundled loading: `defer`, `lazy.bundle`
+
+### New Directives
+- `wire:sort` — drag-and-drop sorting
+- `wire:intersect` — viewport intersection detection
+- `wire:ref` — element references for JS
+
+### Key Changes From v3
+- `wire:model` now ignores child events by default (use `wire:model.deep`)
+- `wire:scroll` renamed to `wire:navigate:scroll`
+- JavaScript: `$wire.$js('name', fn)` → `$wire.$js.name = fn`
+
+---
+
+## BEST PRACTICES
+
+- Always use `wire:key` in loops
+- Use `wire:loading` for loading states
+- Validate in action methods (treat like HTTP requests)
+- Separate Blade templates into small reusable partials
+- Use `wire:poll` for periodic updates (non-blocking)
+- Test with `Livewire::test(Component::class)->call('action')->assertSet('prop', value)`
+
+## COMMON PITFALLS
+
+- Missing `wire:key` in loops → unexpected re-rendering
+- Expecting `wire:model` real-time → use `wire:model.live`
+- Unclosed component tags → syntax errors in v4
+- Forgetting `array_values()` after `array_filter()` on indexed arrays
+- Including Alpine.js separately (already bundled in Livewire 4)
+
+---
+
+## OUTPUT
+
+- Livewire component PHP class
+- Blade view template (.blade.php)

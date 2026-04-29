@@ -1,0 +1,259 @@
+name: pest-testing
+description: Use for Pest PHP testing in Laravel projects. Trigger when tests are being written, edited, fixed, or refactored. Covers test()/it()/expect() syntax, datasets, mocking, browser testing, smoke testing, architecture tests, and Livewire component testing.
+version: 1.0
+
+---
+
+## CONTEXT
+
+Pest 4 with Laravel 13. Daily Logwork uses Pest PHP 4.6 with Laravel plugin.
+
+---
+
+## BASIC USAGE
+
+### Creating Tests
+```bash
+php artisan make:test --pest {name}
+```
+
+### Test Organization
+- Unit tests: `tests/Unit/`
+- Feature tests: `tests/Feature/`
+- Browser tests: `tests/Browser/`
+
+### Basic Test Structure
+Use `test()` if existing tests use `test()`, or `it()` if they use `it()`. Check existing test files first.
+
+```php
+test('example', function () {
+    expect(true)->toBeTrue();
+});
+
+// or
+
+it('has homepage', function () {
+    $response = get('/');
+    $response->assertSuccessful();
+});
+```
+
+### Running Tests
+```bash
+php artisan test --compact                                    # All tests
+php artisan test --compact --filter=testName                  # Filter
+php artisan test --compact tests/Feature/ExampleTest.php      # Single file
+```
+
+---
+
+## ASSERTIONS
+
+### Prefer Specific Assertions
+
+| Use | Instead of |
+|-----|------------|
+| `assertSuccessful()` | `assertStatus(200)` |
+| `assertNotFound()` | `assertStatus(404)` |
+| `assertForbidden()` | `assertStatus(403)` |
+| `assertRedirect()` | `assertStatus(302)` |
+| `assertSessionHas()` | `assertSessionHasErrors()` (when checking specific key) |
+
+```php
+test('returns all items', function () {
+    $response = $this->getJson('/api/docs');
+    $response->assertSuccessful();
+});
+```
+
+### Model Assertions
+```php
+use function PHPUnit\Framework\assertDatabaseHas;
+use function PHPUnit\Framework\assertModelMissing;
+
+test('creates report', function () {
+    $report = DailyReport::factory()->create();
+    assertModelExists($report);
+});
+```
+
+---
+
+## LARAVEL TESTING
+
+### Mocking
+```php
+use function Pest\Laravel\mock;
+
+test('send notification', function () {
+    mock(Notifier::class, function (MockInterface $mock) {
+        $mock->shouldReceive('notify')->once();
+    });
+});
+```
+
+### Fakes
+```php
+test('sends email on registration', function () {
+    Event::fake();
+    Notification::fake();
+    Mail::fake();
+
+    $user = User::factory()->create();
+
+    // Trigger action...
+
+    Event::assertDispatched(UserRegistered::class);
+    Notification::assertSentTo($user, WelcomeNotification::class);
+    Mail::assertSent(WelcomeEmail::class);
+});
+```
+
+### Factories
+```php
+use function Pest\Laravel\assertDatabaseCount;
+
+test('list reports', function () {
+    DailyReport::factory()->count(5)->create();
+
+    $this->get('/reports')
+        ->assertSuccessful()
+        ->assertViewIs('reports.index')
+        ->assertSee('Report 1');
+
+    assertDatabaseCount('daily_reports', 5);
+});
+```
+
+### Refresh Database
+```php
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+it('creates user', function () {
+    $this->withoutExceptionHandling();
+
+    $data = User::factory()->raw();
+    post('/register', $data)
+        ->assertRedirect('/dashboard');
+
+    assertDatabaseHas('users', ['email' => $data['email']]);
+});
+```
+
+---
+
+## DATASETS
+
+For repetitive tests (validation rules, etc.):
+
+```php
+test('validation rules', function (string $field, array $rules) {
+    $response = post('/api/endpoint', [$field => 'invalid']);
+    $response->assertSessionHasErrors([$field => $rules]);
+})->with([
+    'name required' => ['name', 'required|string|max:255'],
+    'email required' => ['email', 'required|email'],
+    'email format' => ['email', 'not_an_email'],
+]);
+```
+
+---
+
+## LIVERWIRE TESTING
+
+```php
+use function Pest\Livewire\livewire;
+
+test('can add task', function () {
+    livewire(DailyReport\Index::class)
+        ->assertSet('todayTasks', [])
+        ->call('addTodayTask')
+        ->assertSet('todayTasks.0.description', '')
+        ->assertSet('todayTasks.0.progress', 0);
+});
+
+test('can save report', function () {
+    livewire(DailyReport\Index::class)
+        ->set('project', 'Project A')
+        ->set('reportDate', today()->toDateString())
+        ->set('qualityRating', 4)
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect();
+});
+```
+
+---
+
+## BROWSER TESTING
+
+Browser tests run in real browsers for full integration testing:
+
+```php
+use function Pest\Livewire\assertAuthenticated;
+use Laravel\Dusk\Browser;
+
+it('may reset the password', function () {
+    Notification::fake();
+
+    $this->actingAs(User::factory()->create());
+
+    $page = visit('/sign-in');
+
+    $page->assertSee('Sign In')
+        ->assertNoJavaScriptErrors()
+        ->click('Forgot Password?')
+        ->fill('email', 'user@example.com')
+        ->click('Send Reset Link')
+        ->assertSee('We have emailed your password reset link!');
+
+    Notification::assertSent(ResetPassword::class);
+});
+```
+
+### Smoke Testing
+```php
+$pages = visit(['/', '/logwork-history']);
+$pages->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+```
+
+---
+
+## ARCHITECTURE TESTING
+
+```php
+arch('controllers')
+    ->expect('App\Http\Controllers')
+    ->toExtendNothing()
+    ->toHaveSuffix('Controller');
+
+arch('models')
+    ->expect('App\Models')
+    ->toExtend(Model::class)
+    ->toHaveProperties();
+```
+
+---
+
+## BEST PRACTICES
+
+- Use `LazilyRefreshDatabase` over `RefreshDatabase` for speed
+- `assertModelExists()` over raw `assertDatabaseHas()`
+- Factory sequences for shared test data with `recycle()`
+- Call `Event::fake()` AFTER factory setup, not before
+- Use `Exceptions::fake()` for expected exceptions
+- Never delete tests without approval — they are core application code
+
+## COMMON PITFALLS
+
+- Not importing `use function Pest\Laravel\mock;` before using mock
+- Using `assertStatus(200)` instead of `assertSuccessful()`
+- Forgetting datasets for repetitive validation tests
+- Deleting tests without approval
+- Forgetting `assertNoJavaScriptErrors()` in browser tests
+
+---
+
+## OUTPUT
+
+- Pest PHP test file with `test()` or `it()` blocks

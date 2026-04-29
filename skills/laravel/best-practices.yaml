@@ -1,0 +1,175 @@
+name: laravel-best-practices
+description: Apply this skill whenever writing, reviewing, or refactoring Laravel PHP code. Covers controllers, models, migrations, Form Requests, policies, jobs, service classes, Eloquent queries, caching, queues, routing, HTTP client, events, notifications, error handling, scheduling, Blade views, collections, security, architecture, and validation. Also for code reviews and refactoring.
+version: 1.0
+
+---
+
+## CONTEXT
+
+Laravel 13 (PHP 8.3+). Follow existing codebase patterns first — consistency overrides any rule below. When no pattern exists, apply these defaults.
+
+---
+
+## DATABASE PERFORMANCE
+
+- Eager load with `with()` to prevent N+1 queries
+- Enable `Model::preventLazyLoading()` in development
+- Select only needed columns, avoid `SELECT *`
+- `chunk()` / `chunkById()` for large datasets
+- Index columns used in `WHERE`, `ORDER BY`, `JOIN`
+- `withCount()` instead of loading relations to count
+- `cursor()` for memory-efficient read-only iteration
+- Never query in Blade templates
+
+## ADVANCED QUERY PATTERNS
+
+- `addSelect()` subqueries over eager-loading entire has-many for a single value
+- Dynamic relationships via subquery FK + `belongsTo`
+- Conditional aggregates (`CASE WHEN` in `selectRaw`) over multiple count queries
+- `setRelation()` to prevent circular N+1 queries
+- `whereIn` + `pluck()` over `whereHas` for better index usage
+- Compound indexes matching `ORDER BY` column order
+- Correlated subqueries in `orderBy` for has-many sorting (avoid joins)
+
+## SECURITY
+
+- Define `$fillable` or `$guarded` on every model, authorize every action via policies or gates
+- No raw SQL with user input — use Eloquent or query builder
+- `{{ }}` for output escaping, `@csrf` on all POST/PUT/DELETE forms, `throttle` on auth and API routes
+- Validate MIME type, extension, and size for file uploads
+- Never commit `.env`, use `config()` for secrets, `encrypted` cast for sensitive DB fields
+
+## CACHING
+
+- `Cache::remember()` over manual get/put
+- `Cache::flexible()` for stale-while-revalidate on high-traffic data
+- `Cache::memo()` to avoid redundant cache hits within a request
+- Cache tags to invalidate related groups
+- `Cache::add()` for atomic conditional writes
+- `once()` to memoize per-request or per-object lifetime
+- `Cache::lock()` / `lockForUpdate()` for race conditions
+
+## ELOQUENT PATTERNS
+
+- Correct relationship types with return type hints
+- Local scopes for reusable query constraints
+- Global scopes sparingly — document their existence
+- Attribute casts in the `casts()` method
+- Cast date columns, use Carbon instances in templates
+- `whereBelongsTo($model)` for cleaner queries
+- Never hardcode table names — use `(new Model)->getTable()` or Eloquent queries
+
+## VALIDATION & FORMS
+
+- Form Request classes, not inline validation
+- Array notation `['required', 'email']` for new code; follow existing convention
+- `$request->validated()` only — never `$request->all()`
+- `Rule::when()` for conditional validation
+- `after()` method for custom validation instead of `withValidator()`
+
+## CONFIGURATION
+
+- `env()` only inside config files
+- `App::environment()` or `app()->isProduction()` for environment checks
+- Config, lang files, and constants over hardcoded text
+
+## TESTING PATTERNS
+
+- `LazilyRefreshDatabase` over `RefreshDatabase` for speed
+- `assertModelExists()` over raw `assertDatabaseHas()`
+- Factory states and sequences over manual overrides
+- Use fakes (`Event::fake()`, `Exceptions::fake()`) — but always after factory setup, not before
+- `recycle()` to share relationship instances across factories
+
+## QUEUE & JOB PATTERNS
+
+- `retry_after` must exceed job `timeout`; use exponential backoff `[1, 5, 10]`
+- `ShouldBeUnique` to prevent duplicates; `ShouldBeUniqueUntilProcessing` for early lock release
+- Always implement `failed()`; with `retryUntil()`, set `$tries = 0`
+- `RateLimited` middleware for external API calls; `Bus::batch()` for related jobs
+
+## ROUTING & CONTROLLERS
+
+- Implicit route model binding
+- Scoped bindings for nested resources
+- `Route::resource()` or `apiResource()`
+- Methods under 10 lines — extract to actions/services
+- Type-hint Form Requests for auto-validation
+
+## HTTP CLIENT
+
+- Explicit `timeout` and `connectTimeout` on every request
+- `retry()` with exponential backoff for external APIs
+- Check response status or use `throw()`
+- `Http::pool()` for concurrent independent requests
+- `Http::fake()` and `preventStrayRequests()` in tests
+
+## EVENTS, NOTIFICATIONS & MAIL
+
+- Event discovery over manual registration; `event:cache` in production
+- `ShouldDispatchAfterCommit` / `afterCommit()` inside transactions
+- Queue notifications and mailables with `ShouldQueue`
+- On-demand notifications for non-user recipients
+- `HasLocalePreference` on notifiable models
+- `assertQueued()` not `assertSent()` for queued mailables
+
+## ERROR HANDLING
+
+- `report()`/`render()` on exception classes or in `bootstrap/app.php` — follow existing pattern
+- `ShouldntReport` for exceptions that should never log
+- Throttle high-volume exceptions to protect log sinks
+- `dontReportDuplicates()` for multi-catch scenarios
+- Force JSON rendering for API routes
+
+## TASK SCHEDULING
+
+- `withoutOverlapping()` on variable-duration tasks
+- `onOneServer()` on multi-server deployments
+- `runInBackground()` for concurrent long tasks
+- `environments()` to restrict to appropriate environments
+
+## ARCHITECTURE
+
+- Single-purpose Action classes; dependency injection over `app()` helper
+- Prefer official Laravel packages and follow conventions
+- Default to `ORDER BY id DESC` or `created_at DESC`; `mb_*` for UTF-8 safety
+- `defer()` for post-response work; `Context` for request-scoped data
+- `Concurrency::run()` for parallel execution
+
+## MIGRATIONS
+
+- Generate migrations with `php artisan make:migration`
+- `constrained()` for foreign keys
+- Never modify migrations that have run in production
+- Add indexes in the migration, not as an afterthought
+- Mirror column defaults in model `$attributes`
+- Reversible `down()` by default; forward-fix migrations for intentionally irreversible changes
+- One concern per migration — never mix DDL and DML
+
+## COLLECTIONS
+
+- Higher-order messages for simple collection operations
+- `cursor()` vs. `lazy()` — choose based on relationship needs
+- `lazyById()` when updating records while iterating
+- `toQuery()` for bulk operations on collections
+
+## BLADE & VIEWS
+
+- `$attributes->merge()` in component templates
+- Blade components over `@include`; `@pushOnce` for per-component scripts
+- View Composers for shared view data
+- `@aware` for deeply nested component props
+
+## CONVENTIONS & STYLE
+
+- Follow Laravel naming conventions for all entities
+- Prefer Laravel helpers (`Str`, `Arr`, `Number`, `Uri`, `Str::of()`) over raw PHP functions
+- No JS/CSS in Blade, no HTML in PHP classes
+- Code should be readable; comments only for config files
+
+---
+
+## OUTPUT
+
+- PHP code files (models, controllers, migrations, tests, views) following best practices
+- Refactoring suggestions aligned with existing codebase patterns

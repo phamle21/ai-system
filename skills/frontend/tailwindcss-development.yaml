@@ -1,0 +1,210 @@
+name: tailwindcss-development
+description: Always invoke for Tailwind CSS work — building responsive layouts, styling components, spacing, typography, dark mode, and Tailwind v4 patterns. Covers utility classes in HTML/Blade templates.
+version: 1.0
+
+---
+
+## CONTEXT
+
+Tailwind CSS v4 with Laravel 13. Daily Logwork uses Tailwind CSS 4 with CSS-first configuration.
+
+---
+
+## TAILWIND CSS V4 SPECIFICS
+
+### CSS-First Configuration
+No `tailwind.config.js` — use `@theme` directive in CSS:
+
+```css
+@theme {
+  --color-brand: oklch(0.72 0.11 178);
+}
+```
+
+### Import Syntax
+Use `@import "tailwindcss"` instead of `@tailwind` directives:
+
+```diff
+- @tailwind base;
+- @tailwind components;
+- @tailwind utilities;
++ @import "tailwindcss";
+```
+
+### Replaced Utilities (Deprecated in v4)
+
+| Deprecated | Replacement |
+|------------|-------------|
+| bg-opacity-* | bg-black/* |
+| text-opacity-* | text-black/* |
+| border-opacity-* | border-black/* |
+| flex-shrink-* | shrink-* |
+| flex-grow-* | grow-* |
+| overflow-ellipsis | text-ellipsis |
+
+---
+
+## SPACING
+
+Use `gap` utilities instead of margins for spacing between siblings:
+
+```html
+<div class="flex gap-4">
+    <div>Item 1</div>
+    <div>Item 2</div>
+</div>
+```
+
+---
+
+## DARK MODE
+
+Support dark mode with `dark:` variant when the project uses it:
+
+```html
+<div class="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+    Content adapts to color scheme
+</div>
+```
+
+---
+
+## COMMON PATTERNS
+
+### Flexbox Layout
+```html
+<div class="flex items-center justify-between gap-4">
+    <div>Left content</div>
+    <div>Right content</div>
+</div>
+```
+
+### Grid Layout
+```html
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div>Card 1</div>
+    <div>Card 2</div>
+    <div>Card 3</div>
+</div>
+```
+
+### Card Component
+```html
+<div class="bg-white rounded-lg border border-slate-200 px-6 py-4">
+    <h3 class="text-lg font-semibold text-slate-900">Title</h3>
+    <p class="text-sm text-slate-500 mt-1">Description</p>
+    <div class="mt-4">
+        <!-- Card body -->
+    </div>
+</div>
+```
+
+### Form Input
+```html
+<div class="mb-4">
+    <label class="block text-sm font-medium text-slate-700 mb-2">Label</label>
+    <input type="text"
+           class="w-full h-9 border border-slate-200 rounded-lg px-3 text-sm
+                  focus:border-blue-500 focus:ring focus:ring-blue-100
+                  dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+    @error('field')
+        <span class="text-red-600 text-sm mt-1">{{ $message }}</span>
+    @enderror
+</div>
+```
+
+### Button Variants
+```html
+<!-- Primary -->
+<button class="h-10 px-6 bg-blue-600 text-white rounded-lg
+               hover:bg-blue-700 transition-all duration-150">
+    Primary Button
+</button>
+
+<!-- Secondary -->
+<button class="h-9 px-4 bg-white border border-slate-200 text-slate-700
+               rounded-lg hover:bg-slate-50 transition-all duration-150">
+    Secondary
+</button>
+
+<!-- Danger -->
+<button class="h-9 px-4 text-red-600 rounded-lg
+               hover:bg-red-50 transition-all duration-150">
+    Delete
+</button>
+
+<!-- Loading state -->
+<button class="h-10 px-6 bg-blue-600 text-white rounded-lg
+               disabled:opacity-50 disabled:cursor-not-allowed"
+        wire:loading.attr="disabled">
+    <span wire:loading.remove>Save</span>
+    <span wire:loading>Saving...</span>
+</button>
+```
+
+---
+
+## DAILY LOGWORK DESIGN SYSTEM
+
+### Colors
+| Token | Tailwind | Hex |
+|-------|----------|-----|
+| Page bg | bg-slate-50 | #F8FAFC |
+| Card bg | bg-white | #FFFFFF |
+| Primary text | text-slate-900 | #0F172A |
+| Secondary text | text-slate-600 | #475569 |
+| Tertiary text | text-slate-500 | #64748B |
+| Muted text | text-slate-400 | #A0AEC0 |
+| Primary button | bg-blue-600 | #2563EB |
+| Primary hover | hover:bg-blue-700 | #1D4ED8 |
+| Danger | text-red-600 | #DC2626 |
+| Danger hover | hover:bg-red-50 | #FEE2E2 |
+| Border | border-slate-200 | #E2E8F0 |
+| Focus | border-blue-500, ring-blue-100 | #3B82F6, #DBEAFE |
+
+### Typography
+| Element | Classes |
+|---------|---------|
+| Page title | text-3xl font-bold text-slate-900 |
+| Card title | text-xl font-semibold text-slate-900 |
+| Section heading | text-lg font-semibold text-slate-900 |
+| Label | text-sm font-medium text-slate-700 |
+| Body | text-sm text-slate-900 |
+| Description | text-sm text-slate-500 |
+| Placeholder | text-sm italic text-slate-400 |
+
+### Spacing
+| Element | Classes |
+|---------|---------|
+| Page container | max-w-4xl mx-auto px-4 py-8 |
+| Card padding | px-6 py-4 |
+| Section gap | space-y-6 |
+| Task gap | space-y-2 |
+| Form label | mb-2 block |
+| Input height | h-9 |
+| Button height | h-10 |
+
+---
+
+## BEST PRACTICES
+
+- Use `gap` utilities instead of margins for spacing between siblings
+- Remove redundant classes
+- Extract repeated patterns into reusable components (Blade components)
+- Consider responsive breakpoints: `sm:`, `md:`, `lg:`, `xl:`
+- Follow project conventions first — check existing classes before introducing new patterns
+
+## COMMON PITFALLS
+
+- Using deprecated v3 utilities (bg-opacity-*, flex-shrink-*, etc.)
+- Using `@tailwind` directives instead of `@import "tailwindcss"`
+- Trying to use `tailwind.config.js` instead of CSS `@theme` directive
+- Using margins for spacing between siblings instead of gap utilities
+- Forgetting to add dark mode variants when the project uses dark mode
+
+---
+
+## OUTPUT
+
+- HTML/Blade markup with Tailwind CSS utility classes
+- CSS with `@theme` directive for custom values (if needed)
