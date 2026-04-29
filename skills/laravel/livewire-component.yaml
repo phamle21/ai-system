@@ -1,0 +1,77 @@
+name: livewire-component
+description: Create Livewire 4 components with reactive properties, validation, and render methods
+version: 1.0
+
+---
+
+## CONTEXT
+
+Livewire 4 with Laravel 13. Use class-based components with page routing.
+
+---
+
+## STEPS
+
+1. Create component: `php artisan make:livewire [namespace]\[Name]`
+2. Define public reactive properties (array, string, int, bool)
+3. Define mount() to initialize component state
+4. Define action methods (add, remove, update)
+5. Define save/submit method with validation
+6. Define render() to return view
+
+## RULES
+
+- Public properties are reactive — wire:model binds to them
+- Use wire:model.live for instant updates (inputs, selects)
+- Use wire:model.defer for batched updates (non-critical fields)
+- Use wire:model.debounce-500ms for textareas
+- Validate with $this->validate() — use Laravel validation rules
+- Arrays must be reindexed with array_values() after filter
+- Generate unique IDs with uniqid() for dynamic list items
+- Use wire:key on all dynamic lists
+- Return view from render() — pass data as second argument
+- Use $this->dispatch() for events (SweetAlert2, etc.)
+- Use $this->redirectRoute() for navigation after success
+- Use $this->addError() for field-level errors
+
+## PATTERNS
+
+### Add item
+```php
+public function addTask(): void {
+    $this->tasks[] = ['id' => uniqid(), 'description' => '', ...];
+}
+```
+
+### Remove item
+```php
+public function removeTask(string $id): void {
+    if (count($this->tasks) > 1) {
+        $this->tasks = array_values(array_filter($this->tasks, fn($t) => $t['id'] !== $id));
+    }
+}
+```
+
+### Update item
+```php
+public function updateTask(string $id, string $field, mixed $value): void {
+    foreach ($this->tasks as &$task) {
+        if ($task['id'] === $id) { $task[$field] = $value; break; }
+    }
+}
+```
+
+### Save
+```php
+public function save(): void {
+    $this->validate([...]);
+    $model = Model::create([...]);
+    $model->tasks()->createMany([...]);
+    session()->flash('message', 'Success!');
+    $this->redirectRoute('route.name');
+}
+```
+
+## OUTPUT
+
+- Livewire component PHP class with all methods

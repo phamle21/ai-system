@@ -1,0 +1,80 @@
+name: blade-components
+description: Create reusable Blade components with slots, attributes, and proper scoping
+version: 1.0
+
+---
+
+## CONTEXT
+
+Blade components for Daily Logwork. Component-based architecture for reusability.
+
+---
+
+## STEPS
+
+1. Create component class: `php artisan make:component ComponentName`
+2. Or use invokable class: `app/View/Components/ComponentName.php`
+3. Define public properties as component data
+4. Define render() returning view path
+5. Register in view or use automatic discovery (app/View/Components → x-component-name)
+
+## RULES
+
+- Use x-component-name syntax in Blade
+- Use $slot for default content
+- Use named slots for complex layouts (header, footer, actions)
+- Use $attributes->merge() for class/style passthrough
+- Keep components focused — one responsibility per component
+- Use Alpine.js for simple interactivity, Livewire for complex state
+- Component names use kebab-case in Blade (x-card-header)
+
+## COMPONENTS REQUIRED
+
+### Card
+Wrapper with header and content areas
+- Default slot: body content
+- Named slots: header, footer (optional)
+- Props: title (string), description (string, optional)
+
+### Card Header
+- Title: text-xl font-semibold text-slate-900
+- Description: text-sm text-slate-500 mt-1
+- Border bottom: border-b border-slate-200
+
+### Card Content
+- Padding: px-6 py-4
+
+### Task Row (Today)
+- Props: task, index, tasks (collection)
+- Drag handle icon
+- Description input
+- Progress select
+- Expected date (conditional)
+- Delete button (conditional)
+
+### Task Row (Tomorrow)
+- Props: task, index, tasks
+- Drag handle icon
+- Description input
+- Delete button (conditional)
+
+### Rating Button Group
+- Props: value, onChange
+- 5 buttons (1-5)
+- Selected button highlighted blue
+- Unselected button white with border
+
+### Project Selector
+- Props: selected, projects
+- Logo image (64x64)
+- Select dropdown
+
+### Toggle Switch
+- Props: checked, onChange
+- Green when checked, gray when unchecked
+- Circle transitions left/right
+
+## OUTPUT
+
+- Component PHP class
+- Component Blade view

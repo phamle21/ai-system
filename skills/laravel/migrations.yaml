@@ -1,0 +1,36 @@
+name: laravel-migrations
+description: Create database migrations with proper schema, foreign keys, indexes
+version: 1.0
+
+---
+
+## CONTEXT
+
+Laravel 13 migrations. Use Blueprint schema builder with proper types and constraints.
+
+---
+
+## STEPS
+
+1. Generate migration with `php artisan make:migration`
+2. Define up() with Schema::create or Schema::table
+3. Define down() with Schema::dropIfExists or Schema::drop
+4. Use proper column types (foreignId, string, text, integer, boolean, date, enum)
+5. Add foreign key constraints with ->constrained()->onDelete('cascade')
+6. Add indexes for frequently queried columns
+7. Add timestamps() automatically
+
+## RULES
+
+- Always use foreignId()->constrained() instead of unsignedBigInteger + manual foreign
+- Use enum() for fixed sets (task_type: today/tomorrow)
+- Use nullable() for optional fields
+- Add default values where appropriate
+- Use timestamps() — don't add created_at/updated_at manually
+- onDelete('cascade') for child tables
+- Column names: snake_case
+- Table names: plural snake_case (daily_reports, report_tasks)
+
+## OUTPUT
+
+- Migration PHP file with up() and down() methods

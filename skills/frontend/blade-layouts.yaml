@@ -1,0 +1,69 @@
+name: blade-layouts
+description: Create page layouts with proper structure, navigation, and section organization
+version: 1.0
+
+---
+
+## CONTEXT
+
+Page layouts for Daily Logwork. Full and compact versions with consistent structure.
+
+---
+
+## STEPS
+
+1. Define outer container (min-h-screen bg-slate-50)
+2. Create header bar with navigation
+3. Create main content area with max-w-4xl mx-auto
+4. Organize sections with space-y-6 gap
+5. Each section is a Card component
+
+## RULES
+
+- Page title: text-3xl font-bold (full) / text-2xl font-bold (compact)
+- History link: top-right in header
+- Main content: max-w-4xl mx-auto px-4 py-8 (full) / max-w-3xl mx-auto px-3 py-4 (compact)
+- Sections separated by space-y-6 (full) / space-y-3 (compact)
+- Each section wrapped in Card component
+- Form wraps all sections: wire:submit="save"
+- Compact version: reduce all padding, spacing, font sizes, input heights
+
+## PAGE STRUCTURE
+
+### Header
+```blade
+<div class="bg-white border-b border-slate-200 shadow-sm">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-slate-900">Daily Report</h1>
+        <a href="{{ route('logwork-history') }}" class="flex items-center gap-2 text-blue-600">
+            <HistoryIcon class="w-5 h-5" />
+            Lịch sử
+        </a>
+    </div>
+</div>
+```
+
+### Page Body
+```blade
+<form wire:submit="save" class="max-w-4xl mx-auto px-4 py-8 space-y-6">
+    @livewire('project-selector')
+    @livewire('today-task-section')
+    @livewire('tomorrow-task-section')
+    @livewire('self-evaluation')
+    @livewire('notes-section')
+    @livewire('submit-section')
+</form>
+```
+
+## SECTION ORDER
+
+1. Project Selection (logo + dropdown)
+2. Today's Tasks (repeater with progress + date)
+3. Tomorrow's Tasks (repeater without progress)
+4. Self Evaluation (quality + spirit ratings)
+5. Notes (textarea)
+6. Submit (toggle + submit button)
+
+## OUTPUT
+
+- Main Blade view file for full and compact pages

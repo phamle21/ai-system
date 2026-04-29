@@ -1,0 +1,34 @@
+name: laravel-models
+description: Create Eloquent models with fillable, casts, relationships, and static helpers
+version: 1.0
+
+---
+
+## CONTEXT
+
+Laravel 13 Eloquent models. Always define $fillable, $casts, relationships explicitly.
+
+---
+
+## STEPS
+
+1. Define namespace: `App\Models`
+2. Extend `Model`
+3. Define $fillable array
+4. Define $casts array
+5. Define relationships (belongsTo, hasMany, belongsToMany)
+6. Add static helper methods if needed (e.g., getOptions, scopes)
+7. Add docblock for IDE support
+
+## RULES
+
+- Always define $fillable — never use $guarded
+- Always cast date/int/boolean types
+- Relationships must use return type hints (HasMany, BelongsTo, etc.)
+- Static helpers return arrays or collections
+- Use snake_case for DB columns, camelCase in code via casts or accessors
+- Never use DB::table() — always use Eloquent
+
+## OUTPUT
+
+- PHP model file with namespace, use statements, class definition

@@ -1,0 +1,86 @@
+name: responsive-design
+description: Responsive breakpoints and mobile-first patterns for Daily Logwork layouts
+version: 1.0
+
+---
+
+## CONTEXT
+
+Mobile-first responsive design for Daily Logwork. Components adapt from mobile to desktop.
+
+---
+
+## BREAKPOINTS
+
+| Breakpoint | Min Width | Class Prefix |
+|------------|-----------|--------------|
+| Mobile | 0px | (none) |
+| Tablet | 640px | sm: |
+| Desktop | 768px | md: |
+| Large | 1024px | lg: |
+
+## MOBILE (< 640px)
+
+- Task rows: flex-col with gap-2
+- All inputs: w-full
+- Self evaluation: single column
+- Logo: mx-auto centered
+- Card padding: px-4 py-3
+
+## TABLET (640px+)
+
+- Task rows: sm:flex-row with sm:gap-3
+- Items: sm:items-center
+- Progress select: w-20 (fixed)
+- Date input: w-32 (fixed)
+
+## DESKTOP (768px+)
+
+- Self evaluation: md:grid-cols-2 (two columns)
+- Card padding: px-6 py-4
+- Full spacing applied
+- Page container: max-w-4xl
+
+## COMPONENTS RESPONSIVE BEHAVIOR
+
+### Task Row
+```blade
+flex flex-col sm:flex-row gap-2 sm:gap-3 items-start sm:items-center p-2
+```
+- Mobile: stacked vertically, smaller gap
+- Tablet+: horizontal row, larger gap
+
+### Project Selection
+```blade
+flex flex-col sm:flex-row items-start sm:items-center gap-4
+```
+- Mobile: logo above select
+- Tablet+: logo beside select
+
+### Self Evaluation
+```blade
+grid grid-cols-1 md:grid-cols-2 gap-6
+```
+- Mobile: single column
+- Desktop: two columns side-by-side
+
+### Submit Section
+```blade
+flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4
+```
+- Mobile: stacked
+- Tablet+: horizontal with space-between
+
+### Compact Version
+Apply these reductions:
+- Card padding: px-3 py-3 (vs px-6 py-4)
+- Section gap: space-y-3 (vs space-y-6)
+- Input height: h-8 (vs h-9)
+- Font sizes: text-xs (vs text-sm)
+- Self evaluation: always single column
+- Textarea rows: 2 (vs 3)
+
+## OUTPUT
+
+- CSS class recommendations
+- Responsive utility classes for components

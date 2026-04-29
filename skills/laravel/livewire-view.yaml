@@ -1,0 +1,82 @@
+name: livewire-view
+description: Create Livewire Blade views with two-way binding, conditional rendering, and interactive elements
+version: 1.0
+
+---
+
+## CONTEXT
+
+Blade views for Livewire 4 components. Use @foreach with wire:key, wire:model for binding.
+
+---
+
+## STEPS
+
+1. Create view file in resources/views/livewire/[component]/
+2. Wrap in outer div
+3. Use @foreach with wire:key for dynamic lists
+4. Bind inputs with wire:model.live or wire:model.defer
+5. Handle conditional rendering with @if/@endif
+6. Add error display with @error/@enderror
+7. Add form submission with wire:submit="save"
+8. Add loading states with wire:loading/wire:loading.remove
+
+## RULES
+
+- Always use wire:key on items in @foreach loops
+- Use wire:model.live for inputs that need instant feedback (selects, text inputs)
+- Use wire:model.defer for non-critical fields
+- Show delete button with opacity-0 group-hover:opacity-100
+- Show expected date input conditionally (@if $task['progress'] < 100)
+- Use {{ }} for escaped output — never {{!! }}
+- Separate Blade templates into small reusable partials
+- All views must start with `<?php if (!defined('ABSPATH')) exit; ?>` protection? NO — this is Laravel, not WordPress
+
+## PATTERNS
+
+### Dynamic list
+```blade
+@foreach($tasks as $index => $task)
+    <div wire:key="{{ $task['id'] }}">
+        <input wire:model.live="tasks.{{ $index }}.description" />
+    </div>
+@endforeach
+```
+
+### Conditional field
+```blade
+@if($task['progress'] < 100)
+    <input type="date" wire:model.live="tasks.{{ $index }}.expectedDate" />
+@endif
+```
+
+### Delete button (hover reveal)
+```blade
+@if(count($tasks) > 1)
+    <button type="button"
+            wire:click="removeTask('{{ $task['id'] }}')"
+            class="opacity-0 group-hover:opacity-100 transition-opacity">
+    </button>
+@endif
+```
+
+### Form with validation
+```blade
+<form wire:submit="save">
+    <input wire:model.live="name" />
+    @error('name')<span class="text-red-600">{{ $message }}</span>@enderror
+    <button type="submit">Submit</button>
+</form>
+```
+
+### Loading state
+```blade
+<button wire:loading.attr="disabled">
+    <span wire:loading.remove>Save</span>
+    <span wire:loading>Saving...</span>
+</button>
+```
+
+## OUTPUT
+
+- Blade template file (.blade.php)

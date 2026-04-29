@@ -1,0 +1,49 @@
+name: laravel-routing
+description: Define Laravel routes with Livewire page components, middleware, and named routes
+version: 1.0
+
+---
+
+## CONTEXT
+
+Laravel 13 routes with Livewire 4 page components. Use route-to-component binding.
+
+---
+
+## STEPS
+
+1. Define routes in routes/web.php
+2. Use Livewire page component syntax: Route::get('/path', Component::class)
+3. Apply middleware where needed (web, auth)
+4. Name routes for URL generation
+5. Keep routes minimal — one route per Livewire page
+
+## RULES
+
+- All routes wrapped in Route::middleware(['web'])
+- Use Route::get('/path', Component::class) syntax (Livewire 4 page components)
+- Always name routes: ->name('route.name')
+- Group related routes with Route::prefix() or Route::group()
+- Keep route files clean — no controllers unless necessary
+- Use named routes in links: route('route.name')
+- Use redirectRoute() in Livewire components instead of redirect()->route()
+
+## PATTERNS
+
+### Livewire Page Component
+```php
+Route::get('/daily-report', DailyReportIndex::class)->name('daily-report');
+Route::get('/daily-report/compact', DailyReportCompact::class)->name('daily-report.compact');
+Route::get('/logwork-history', LogworkHistoryIndex::class)->name('logwork-history');
+```
+
+### With Middleware
+```php
+Route::middleware(['auth'])->group(function () {
+    Route::get('/reports', ReportsIndex::class)->name('reports.index');
+});
+```
+
+## OUTPUT
+
+- Routes PHP file with Route definitions
