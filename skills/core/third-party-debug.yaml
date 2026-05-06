@@ -1,0 +1,62 @@
+name: third-party-debug
+description: Debug issues in third-party plugins, find configuration values, and trace root causes without modifying plugin code
+version: 1.0
+
+when_to_use:
+  - debugging issues in third-party plugins (not in project code)
+  - searching for configuration options or constants in external code
+  - finding where a behavior is controlled (allow reuse, time windows, limits, drift)
+  - investigating why a setting doesn't work as expected
+  - finding filter hooks / action hooks / filters in third-party code
+  - searching for numeric thresholds, limits, timeouts, window sizes
+
+input:
+  - symptom: description of the unexpected behavior (e.g., "code can be reused 4 times")
+  - plugin_name: name or directory of the third-party plugin
+  - suspected_behavior: what should happen vs what is happening
+  - search_keywords: optional list of terms to search for
+
+steps:
+  1. Locate plugin directory — glob `plugins/{plugin_name}/**/*` or `mu-plugins/{plugin_name}/**/*`
+  2. Broad keyword search — grep for symptom-related terms in plugin PHP files:
+     - Numeric limits → search "4.*use|use.*4|times|max.*limit|allow.*4|window|overlap|drift"
+     - Configuration → search "setting|option|config|constant|DEFAULT_"
+     - Behavior control → search "allow|enable|reuse|drift|overlap|window|step|tolerance"
+  3. Read relevant files — identify the class/method controlling the behavior
+     - For TOTP/OAuth: check `class-authentication.php`, `class-totp.php`, `class-*.php`
+     - Look for constants like `DEFAULT_TIME_STEP_*`, `ALLOW_*`, `MAX_*`
+     - Look for `apply_filters()` that could override the value
+  4. Trace the validation logic — find the function that validates/accepts the value
+     - Read the full validation function to understand the algorithm
+     - Check if it checks multiple time windows, retries, or offsets
+     - Identify the exact constant/filter that controls the behavior
+  5. Document findings:
+     - File path and line number of the root cause
+     - Current value and what it controls
+     - Available filters/hooks to override without modifying plugin code
+     - Recommended approach: filter (preferred) vs override vs patch
+
+rules:
+  - NEVER modify third-party plugin files directly
+  - ALWAYS look for filters/hooks (apply_filters/do_action) before suggesting changes
+  - Use filter hooks as first option, theme overrides as second option
+  - Read the actual validation logic — don't assume based on function name
+  - Report exact file:line of root cause
+  - Report exact constant/filter name that controls the behavior
+  - Report what the default value is and what changing it would affect
+  - Check if the constant/filter can be overridden via theme, mu-plugin, or wp-config
+  - Prefer WP_CONSTANTS + add_filter() over modifying plugin code
+
+output:
+  type: analysis
+  schema:
+    plugin_name: string
+    symptom: string
+    root_cause_file: string
+    root_cause_line: int
+    current_value: any
+    control_mechanism: string        # constant name or filter name
+    available_filters: string[]     # list of apply_filters() that can override
+    validation_algorithm: string    # brief description of how validation works
+    recommended_approach: string    # filter / theme class / wp-config constant
+    impact_analysis: string         # what happens when value is changed
