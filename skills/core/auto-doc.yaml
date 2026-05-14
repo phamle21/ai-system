@@ -1,0 +1,147 @@
+name: auto-doc
+description: Automated documentation generation for WordPress features. Generates PR summaries, API reference docs, changelog entries, and inline code documentation. Targets seniors/architects who want clean PRs without manual documentation.
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "8.0+"
+
+when_to_use:
+  - after completing a coding task
+  - before PR submission
+  - user says "review" or "docs"
+  - after code-review skill runs
+  - generating API reference for new endpoints
+  - updating changelog after feature implementation
+
+input:
+  - files_created: list of {path, type, description}
+  - files_modified: list of {path, description}
+  - execution_results: output from execute skill
+  - api_endpoints: list of REST endpoints (from scaffold)
+  - hooks_used: list of WP hooks used
+  - conventions: project conventions from autoload
+
+steps:
+  - Phase 1: PR Summary Generation
+    Generate a structured PR summary with:
+    
+    ## Summary
+    One-line description of the feature.
+    
+    ## Changes
+    Bullet points grouped by category:
+    - Backend: new files, modified files
+    - API: new endpoints, schema changes
+    - Admin: new metaboxes, list columns, settings
+    - Frontend: new views, JS modules, assets
+    
+    ## API Endpoints
+    Table format:
+    | Method | Endpoint | Description | Permission |
+    |--------|----------|-------------|------------|
+    | GET    | ...      | ...         | public     |
+    | POST   | ...      | ...         | edit_posts |
+    
+    ## Hooks
+    List of WP hooks registered:
+    - `add_action('init', ...)` — register CPT
+    - `add_action('rest_api_init', ...)` — register REST routes
+    
+    ## Testing Notes
+    - Manual testing steps
+    - API test commands (curl/wp-cli)
+    - Edge cases to verify
+    
+    ## Breaking Changes
+    - None (or list if any)
+    
+    ## Migration
+    - Data migration steps (if applicable)
+
+  - Phase 2: API Reference Generation
+    Generate API reference documentation:
+    
+    ### Endpoint: GET /wp-json/jrr/v1/[post_type]
+    **Description**: List all [CptName] items
+    
+    **Query Parameters**:
+    | Param | Type | Default | Description |
+    |-------|------|---------|-------------|
+    | per_page | integer | 20 | Results per page (max 100) |
+    | page | integer | 1 | Page number |
+    | search | string | - | Search query |
+    
+    **Response**:
+    ```json
+    {
+      "data": [...],
+      "total": 42,
+      "pages": 3,
+      "current": 1
+    }
+    ```
+    
+    **Error Responses**:
+    | Status | Response |
+    |--------|----------|
+    | 404 | {"success": false, "message": "[CptName] not found"} |
+    
+    Repeat for each endpoint.
+
+  - Phase 3: Changelog Entry Generation
+    Generate changelog entry in standard format:
+    
+    ### [Version] - [Date]
+    #### Added
+    - New CPT: [CptName] with fields: [field1, field2, ...]
+    - REST API endpoints for [CptName]
+    - Many-many relation between [CptName] and [RelatedCpt]
+    
+    #### Changed
+    - (any modifications)
+    
+    #### Fixed
+    - (any bug fixes)
+
+  - Phase 4: Inline Documentation Validation
+    Check that generated code has proper:
+    - PHPDoc blocks on classes and methods
+    - Hook explanation comments (Vietnamese for beginners)
+    - Security comments (nonce, capability notes)
+    - Type hints on all parameters and return values
+
+  - Phase 5: Output Report
+    Generate structured report:
+    - pr_summary: markdown string ready for PR description
+    - api_reference: markdown string for API docs
+    - changelog_entry: markdown string for changelog
+    - validation: any documentation gaps found
+
+rules:
+  - Must generate PR-ready markdown, not raw data
+  - Must use table format for API endpoints
+  - Must include curl examples for each endpoint
+  - Must list ALL files created/modified with descriptions
+  - Must include permission requirements for each endpoint
+  - Must list breaking changes explicitly (or state "None")
+  - Must include testing commands (curl, WP-CLI)
+  - Must generate changelog in semantic versioning format
+  - Must validate PHPDoc exists on all public methods
+  - Must include Vietnamese hook explanations for beginner accessibility
+  - Must keep PR summary under 500 words
+  - Must group changes by category (BE/FE/API/Admin)
+  - Must not invent behavior not present in code
+
+output:
+  type: text
+  schema:
+    pr_summary: string
+    api_reference: string
+    changelog_entry: string
+    hooks_documented: string[]
+    files_documented: string[]
+    validation:
+      phpdoc_complete: boolean
+      hook_comments_present: boolean
+      security_notes_present: boolean
+    gaps: string[]

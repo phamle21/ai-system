@@ -1,0 +1,202 @@
+name: scaffold
+description: Guided code generation skill for WordPress features. Generates correct file structure, points to exact files, explains WP hooks in plain language. Targets beginners with step-by-step scaffolding while respecting project conventions.
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "8.0+"
+
+when_to_use:
+  - creating new CPT/taxonomy with fields and relations
+  - adding REST API endpoints for custom data
+  - adding AJAX handlers for custom data
+  - generating file structure when unsure where to put code
+  - onboarding new developers who don't know WP hook system
+
+input:
+  - feature: { name, type: "cpt" | "api" | "ajax" | "relation" }
+  - post_type: CPT slug (e.g., "rider_group")
+  - labels: { singular, plural, description }
+  - fields: array of { name, type, label, required, default }
+  - supports: array (title, editor, thumbnail, custom-fields, etc.)
+  - relations: array of { type: "many-many" | "many-one" | "one-many", target_cpt, via: "meta" | "taxonomy" | "pivot_table" }
+  - api: { show_in_rest: boolean, custom_endpoints: array, permissions: string }
+  - project_context: loaded conventions from autoload
+
+steps:
+  - Phase 1: Context Validation
+    1. Check project_context for namespace pattern, module structure, naming conventions
+    2. Verify CPT slug doesn't conflict with existing CPTs (check context.yaml CPTs list)
+    3. Check if Pods bootstrap config exists for this CPT
+    4. If CPT already exists → skip registration, only generate extensions (API, AJAX, metaboxes)
+
+  - Phase 2: Determine File Structure
+    Based on feature type, generate directory structure:
+    
+    For new CPT:
+      ```
+      jrr-core/src/
+      ├── Modules/
+      │   ├── PostType/
+      │   │   └── [CptName]/
+      │   │       ├── PostType[CptName].php    # CPT registration (extends Pods or registers)
+      │   │       ├── Repository/
+      │   │       │   └── [CptName]Repository.php  # Data access layer
+      │   │       └── Metabox/
+      │   │           └── [CptName]Metabox.php   # Admin metaboxes
+      │   └── REST/
+      │       └── [CptName]Controller.php        # REST API endpoints
+      └── ...
+      ```
+    
+    For relation (many-many):
+      ```
+      jrr-core/src/Modules/Relation/
+      └── [CptName]Relation.php      # Handles relation logic
+      └── Repository/
+          └── [Relation]Repository.php  # Query helper
+      ```
+
+  - Phase 3: Generate Code — Explain Hook Pattern
+    For EACH file generated, include inline comment explaining the WP hook:
+    
+    Hook explanation format:
+      ```php
+      /**
+       * Hook: add_action('init', ...)
+       * Giải thích: WordPress gọi hàm này khi khởi động, dùng để đăng ký CPT/taxonomy
+       * Tham số: priority (default 0), accepted_args (default 1)
+       * Khi nào chạy: Trước khi load theme, plugin, user data
+       */
+      ```
+    
+    Common hooks reference (auto-explain in comments):
+    - `init` → Đăng ký CPT, taxonomy, custom post types
+    - `add_meta_boxes` → Tạo metabox trong admin editor
+    - `save_post_{post_type}` → Lưu dữ liệu custom khi save post
+    - `manage_{post_type}_posts_columns` → Thêm cột trong admin list
+    - `wp_ajax_{action}` → AJAX handler (logged in user)
+    - `wp_ajax_nopriv_{action}` → AJAX handler (public)
+    - `register_rest_route` → Custom REST API endpoint
+    - `rest_{post_type}_collection_params` → Filter query params
+
+  - Phase 4: Generate Code — Follow Project Conventions
+    Apply ALL of the following strictly:
+    
+    4a. Namespace: `JRR\Core\Modules\[Module]\[SubModule]`
+    4b. Class: `final` classes, constructor with lazy instantiation
+    4c. Meta keys: `snake_case`, prefix `jrr_`
+    4d. REST API: unique namespace `jrr/v1`, permission callback required
+    4e. AJAX: nonce check → sanitize → capability → business logic → response
+    4f. Repository pattern: data access isolated from controllers
+    4g. Pods-aware: if CPT is in pods-bootstrap, don't re-register, extend only
+
+  - Phase 5: Relation Handling (for many-many relations)
+    For many-many relations, generate:
+    
+    Option A: Meta-based (simple, good for ≤1000 relations)
+      ```php
+      // Store relation IDs as serialized array in meta
+      update_post_meta($post_id, 'jrr_rider_group_ids', [1, 2, 3]);
+      // Or better: one meta per relation row for metadata
+      ```
+    
+    Option B: Pivot post type (cleaner, recommended)
+      ```
+      Create pivot CPT: "rider_group_relation"
+      Fields: rider (relationship), group (relationship), role (text), join_date (date)
+      Query: WP_Query with tax_query on both sides
+      ```
+    
+    For this feature (rider_group ↔ rider many-many):
+      - Generate pivot CPT config for pods-bootstrap
+      - Generate helper methods in repository
+      - Generate relation controller for REST API
+
+  - Phase 6: REST API Generation
+    For each CPT + relation, generate endpoints:
+    
+    Base endpoints (auto from show_in_rest=true):
+      - GET /wp-json/jrr/v1/{post_type}        # List
+      - GET /wp-json/jrr/v1/{post_type}/{id}   # Single
+      - POST /wp-json/jrr/v1/{post_type}       # Create
+      - PUT /wp-json/jrr/v1/{post_type}/{id}   # Update
+      - DELETE /wp-json/jrr/v1/{post_type}/{id} # Delete
+    
+    Custom endpoints for relations:
+      - GET /wp-json/jrr/v1/{post_type}/{id}/groups  # Get related groups for a rider
+      - GET /wp-json/jrr/v1/groups/{id}/riders       # Get riders in a group
+      - POST /wp-json/jrr/v1/{post_type}/{id}/groups # Assign rider to group
+      - DELETE /wp-json/jrr/v1/{post_type}/{id}/groups/{group_id} # Remove relation
+    
+    Permission handling:
+      - `show_in_rest=true` → default REST permissions apply
+      - Custom endpoints → explicit capability check in permission_callback
+      - Public endpoints → check nonce OR allow anonymous with capability fallback
+
+  - Phase 7: Module Registration
+    Add registration call to existing module (e.g., PostType/[CptName]/PostType[CptName].php):
+    ```php
+    // In constructor — lazy instantiate children
+    public function __construct() {
+        new Repository\[CptName]Repository();
+        new Metabox\[CptName]Metabox();
+        // REST controller self-registers via init hook
+    }
+    ```
+
+  - Phase 8: Output Scaffolding Report
+    Generate report with:
+    - files_created: list of all generated files
+    - files_modified: list of existing files that need registration updates
+    - hooks_used: list of WP hooks with brief explanation
+    - api_endpoints: list of REST endpoints generated
+    - next_steps: what to do after scaffolding (register in module, test, etc.)
+
+rules:
+  - Must ALWAYS explain WP hooks in comments (Vietnamese explanation OK)
+  - Must point to EXACT file paths, never generic paths
+  - Must check existing CPTs before creating new ones (avoid conflicts)
+  - Must follow JRR namespace: JRR\Core\Modules\[Module]\[SubModule]
+  - Must use final classes with constructor instantiation pattern
+  - Must generate repository pattern for data access
+  - Must include permission_callback for ALL REST endpoints
+  - Must include nonce verification for ALL AJAX handlers
+  - Must escape all output (esc_html, esc_attr, esc_url)
+  - Must sanitize all input (sanitize_text_field, absint, etc.)
+  - Must use snake_case for meta keys with jrr_ prefix
+  - Must respect Pods: if CPT exists in pods-bootstrap, don't re-register
+  - Must generate both REST base endpoints AND custom relation endpoints
+  - Must output scaffold report after generation
+  - For beginners: include "Hook Explanation" comment blocks
+  - For seniors: include "Optimization Notes" comments (query performance, caching)
+  - Must not skip validation — fail if required inputs missing
+
+output:
+  type: text
+  schema:
+    scaffold_type: "cpt" | "api" | "ajax" | "relation"
+    files_created:
+      - path: string
+        type: "new" | "modified"
+        description: string
+        hooks_explained:
+          - hook: string
+            purpose: string
+            explanation_vn: string
+    hooks_used:
+      - hook: string
+        type: "action" | "filter" | "rest_route"
+        explanation: string
+        usage: string
+    api_endpoints:
+      - method: string
+        path: string
+        permission: string
+        description: string
+    relations_generated:
+      - type: string
+        target: string
+        storage: "meta" | "pivot"
+        helper_methods: string[]
+    validation_warnings: string[]
+    next_steps: string[]

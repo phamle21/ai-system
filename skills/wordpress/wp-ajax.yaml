@@ -1,0 +1,287 @@
+name: wp-ajax
+description: WordPress AJAX handling — wp_ajax hooks, nonce verification, JSON responses, and JS patterns
+version: 1.0
+
+when_to_use:
+  - implementing AJAX handlers in wp-admin (logged-in users)
+  - handling AJAX requests from admin screens
+  - sending JSON responses (success/error)
+  - nonce verification for AJAX requests
+  - JavaScript AJAX patterns: jQuery.post, abort previous requests, debounce
+  - batch/large AJAX operations with progress feedback
+  - file upload via AJAX
+
+# ============================================================
+# PATTERN 1: BASIC WP_AJAX HANDLER
+# ============================================================
+#
+# File: includes/Modules/{CPT}/Admin/{Name}Ajax.php
+#
+# class MyCptStatusAjax {
+#     public function __construct() {
+#         add_action('wp_ajax_my_cpt_status', [$this, 'handle']);
+#         // Optional: add_action('wp_ajax_nopriv_my_cpt_status', [$this, 'handle']);
+#     }
+#
+#     public function handle(): void {
+#         // 1. Nonce check (stops on failure with 400)
+#         check_ajax_referer('my_cpt_status', 'nonce');
+#
+#         // 2. Sanitize input
+#         $post_id = isset($_POST['post_id']) ? (int) $_POST['post_id'] : 0;
+#         if (!$post_id) {
+#             wp_send_json_error(['message' => 'Invalid ID']);
+#         }
+#
+#         // 3. Capability check
+#         if (!current_user_can('edit_post', $post_id)) {
+#             wp_send_json_error(['message' => 'Permission denied']);
+#         }
+#
+#         // 4. Business logic
+#         $status = get_post_meta($post_id, 'my_cpt_status', true);
+#
+#         // 5. Success response
+#         wp_send_json_success(['status' => $status ?: 'pending']);
+#     }
+# }
+#
+# Key points:
+# - wp_ajax_{action} — logged-in users only (default for admin)
+# - wp_ajax_nopriv_{action} — allows unauthenticated access (use sparingly)
+# - check_ajax_referer() verifies nonce AND stops execution on failure (sends 400)
+# - wp_send_json_success($data) — sends 200 + {success: true, data: $data}
+# - wp_send_json_error($data) — sends 400 + {success: false, data: $data}
+
+# ============================================================
+# PATTERN 2: NONCE VERIFICATION
+# ============================================================
+#
+# Creating nonce in PHP (rendered in template):
+#
+#   $nonce = wp_create_nonce('my_cpt_import');
+#   echo '<button class="button" data-nonce="' . esc_attr($nonce) . '">Import</button>';
+#
+# Or via wp_localize_script():
+#
+#   wp_localize_script('my-plugin-script', 'myAjax', [
+#       'nonce' => wp_create_nonce('my_cpt_import'),
+#   ]);
+#
+# Verifying in handler:
+#
+#   // Option A: check_ajax_referer() — stops on failure (recommended)
+#   check_ajax_referer('my_cpt_import', 'nonce');
+#
+#   // Option B: manual verification (custom error message)
+#   if (!isset($_POST['nonce'])
+#       || !wp_verify_nonce($_POST['nonce'], 'my_cpt_import')) {
+#       wp_send_json_error(['message' => 'Security check failed']);
+#   }
+#
+# Key points:
+# - check_ajax_referer() sends 400 automatically — use EITHER this OR manual check
+# - Nonce action string should be unique: '{plugin}_{post_type}_{action}'
+# - Nonce param name defaults to 'nonce' — specify second param if different
+# - Nonces expire after 24 hours (rarely an issue for admin AJAX)
+
+# ============================================================
+# PATTERN 3: JS CLIENT — JQUERY POST
+# ============================================================
+#
+# Basic AJAX call:
+#
+#   jQuery(document).on('click', '.my-sync-btn', function(e) {
+#       e.preventDefault();
+#       var $btn = jQuery(this);
+#       var postId = $btn.data('post-id');
+#
+#       $btn.prop('disabled', true).find('.spinner').css('visibility', 'visible');
+#
+#       jQuery.post(ajaxurl, {
+#           action: 'my_cpt_status',
+#           nonce:  $btn.data('nonce'),
+#           post_id: postId
+#       }, function(response) {
+#           $btn.prop('disabled', false).find('.spinner').css('visibility', 'hidden');
+#           if (response.success) {
+#               alert('Status: ' + response.data.status);
+#           } else {
+#               alert('Error: ' + response.data.message);
+#           }
+#       }).fail(function(xhr) {
+#           $btn.prop('disabled', false).find('.spinner').css('visibility', 'hidden');
+#           alert('Request failed: ' + xhr.responseText);
+#       });
+#   });
+#
+# Key points:
+# - ajaxurl is global in admin (set by WordPress) — do NOT hardcode admin-ajax.php path
+# - Use .spinner class for WP-style loading indicator
+# - Disable button during request to prevent double-submission
+# - Always handle .fail() for network errors
+
+# ============================================================
+# PATTERN 4: DEBOUNCE + ABORT PREVIOUS REQUEST
+# ============================================================
+#
+# Search/filter with AJAX:
+#
+#   var searchTimeout = null;
+#   var searchXhr = null;
+#
+#   jQuery(document).on('input', '.my-search-input', function() {
+#       var $input = jQuery(this);
+#       var query = $input.val().trim();
+#
+#       clearTimeout(searchTimeout);
+#
+#       if (query.length < 2) {
+#           $input.data('results').html('');
+#           return;
+#       }
+#
+#       if (searchXhr && searchXhr.readyState !== 4) {
+#           searchXhr.abort();
+#       }
+#
+#       searchTimeout = setTimeout(function() {
+#           var $results = $input.data('results');
+#           $results.html('<span class="spinner is-active"></span>');
+#
+#           searchXhr = jQuery.post(ajaxurl, {
+#               action: 'my_search',
+#               nonce:  $input.data('nonce'),
+#               s:      query,
+#               limit:  20
+#           }, function(response) {
+#               if (response.success) {
+#                   $results.html(response.data.html);
+#               } else {
+#                   $results.html('<p>Error: ' + response.data.message + '</p>');
+#               }
+#           });
+#       }, 300);
+#   });
+#
+# Key points:
+# - clearTimeout() for debounce (prevents excessive requests)
+# - abort() previous XHR to avoid race conditions
+# - Check readyState !== 4 before aborting (4 = completed)
+# - 300ms debounce is standard for search input
+
+# ============================================================
+# PATTERN 5: FILE UPLOAD VIA AJAX
+# ============================================================
+#
+# File upload:
+#
+#   jQuery(document).on('change', '.my-file-input', function() {
+#       var $input = jQuery(this);
+#       var formData = new FormData();
+#       formData.append('action', 'my_import');
+#       formData.append('nonce', $input.data('nonce'));
+#       formData.append('file', $input[0].files[0]);
+#
+#       jQuery.ajax({
+#           url:         ajaxurl,
+#           type:        'POST',
+#           data:        formData,
+#           processData: false,
+#           contentType: false,
+#           xhr: function() {
+#               var xhr = new window.XMLHttpRequest();
+#               xhr.upload.addEventListener('progress', function(ev) {
+#                   if (ev.lengthComputable) {
+#                       var percent = (ev.loaded / ev.total) * 100;
+#                       $input.closest('.my-form').find('.progress').val(percent);
+#                   }
+#               });
+#               return xhr;
+#           },
+#           success: function(response) {
+#               alert(response.success ? response.data.message : response.data.message);
+#           }
+#       });
+#   });
+#
+# PHP handler:
+#   class ImportAjax {
+#       public function handle(): void {
+#           check_ajax_referer('my_import', 'nonce');
+#           if (!isset($_FILES['file'])) {
+#               wp_send_json_error(['message' => 'No file']);
+#           }
+#           $result = $this->process($_FILES['file']['tmp_name']);
+#           wp_send_json_success(['count' => $result]);
+#       }
+#   }
+#
+# Key points:
+# - FormData: set processData: false and contentType: false
+# - $_FILES available in PHP handler automatically
+# - Use XMLHttpRequest upload progress event for progress bar
+# - Validate file type/size before processing
+
+# ============================================================
+# PATTERN 6: BATCH/LARGE OPERATIONS
+# ============================================================
+#
+# Chunks/batches:
+#
+#   function batchProcess(url, data, completed) {
+#       jQuery.post(url, data, function(response) {
+#           if (response.success && response.data.more) {
+#               data.cursor = response.data.next_cursor;
+#               batchProcess(url, data, completed);
+#           } else {
+#               completed(response.data);
+#           }
+#       });
+#   }
+#
+# PHP:
+#   class BatchAjax {
+#       public function handle(): void {
+#           check_ajax_referer('my_batch', 'nonce');
+#           $cursor = isset($_POST['cursor']) ? (int) $_POST['cursor'] : 0;
+#           $limit  = 50;
+#
+#           $items = $this->get_items($cursor, $limit);
+#           $count = 0;
+#           foreach ($items as $item) {
+#               $this->process_item($item);
+#               $count++;
+#           }
+#
+#           $hasMore = count($items) === $limit;
+#           wp_send_json_success([
+#               'count'       => $count,
+#               'more'        => $hasMore,
+#               'next_cursor' => $cursor + $limit,
+#           ]);
+#       }
+#   }
+#
+# Key points:
+# - Use cursor/offset for pagination
+# - Return 'more' flag to indicate if more data exists
+# - Recursive JS call continues until more=false
+# - Return running 'total' for progress tracking
+
+# ============================================================
+# RULES
+# ============================================================
+rules:
+  - wp_ajax_{action} hook for logged-in users, wp_ajax_nopriv_{action} for public (use sparingly)
+  - check_ajax_referer() stops on failure with 400 — do NOT use both check_ajax_referer AND manual nonce verify
+  - wp_send_json_success($data) sends 200 + {success: true, data: $data}
+  - wp_send_json_error($data) sends 400 + {success: false, data: $data}
+  - ajaxurl is global in admin — do NOT hardcode admin-ajax.php
+  - Always use nonce for state-changing actions (create, update, delete, import, sync)
+  - Sanitize all $_POST input: (int) casts, sanitize_text_field(), sanitize_email(), etc.
+  - Debounce search inputs (300ms standard) to reduce AJAX calls
+  - Abort previous XHR before sending new request to prevent race conditions
+  - Use FormData with processData: false, contentType: false for file uploads
+  - Disable submit button during AJAX to prevent double-submission
+  - Spinner class provides WP-style loading indicator

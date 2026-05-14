@@ -19,7 +19,7 @@ steps:
   - Summarize files changed and what was modified
   - List validation results and any warnings
   - Document any deviations from the plan
-  - Note token usage across entire pipeline
+  - Note context budget estimate and loaded context files
   - Output structured summary report
 
 rules:
@@ -28,7 +28,7 @@ rules:
   - Must document files changed with brief description
   - Must list validation results and warnings
   - Must note any plan deviations
-  - Must include total token usage
+  - Must include context budget estimate when available
   - Must not fabricate results or hide failures
   - Must be concise and factual
 
@@ -39,6 +39,7 @@ output:
     files_changed: string[]
     validations_passed: number
     validations_failed: number
-    token_total: number
+    context_budget: low | medium | high
+    loaded_files: string[]
     deviations: string[]
     warnings: string[]

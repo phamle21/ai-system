@@ -1,0 +1,22 @@
+name: review
+description: Pipeline for code review, compliance review, and risk assessment without default implementation
+version: 1.0
+
+steps:
+  - analyze: identify scope, stack, and review criteria
+  - inspect: read relevant code, diffs, rules, and tests
+  - findings: list defects, risks, missing tests, and open questions
+  - summarize: provide concise review result
+
+rules:
+  - Findings must lead the output.
+  - Must include file and line references when possible.
+  - Must prioritize bugs, regressions, security, and missing validation.
+  - Must not modify code unless the user explicitly asks for fixes.
+
+output:
+  type: text
+  schema:
+    findings: string[]
+    open_questions: string[]
+    residual_risk: string[]

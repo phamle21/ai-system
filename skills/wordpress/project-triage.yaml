@@ -3,7 +3,7 @@ description: Deterministic inspection of a WordPress repository (plugin/theme/bl
 version: 1.0
 compatibility:
   wordpress: "6.9+"
-  php: "7.2.24+"
+  php: "8.0+"
 
 when_to_use:
   - understanding WP repo type before making changes

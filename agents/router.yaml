@@ -5,10 +5,14 @@ version: 1.0
 rules:
   - Must parse intent before routing (create | fix | refactor | review | debug)
   - Must detect stack from context or project files before skill selection
+  - Must load project routing overlay first when projects/[project]/routing.yaml exists
+  - Must apply project allowed_skills and denied_skills before selecting domain skills
   - Must map task_type to correct pipeline:
+      simple_fix -> simple-fix
       feature -> build-feature
-      bugfix  -> build-feature (with debug context)
-      refactor -> build-feature (with refactor flag)
+      bugfix  -> debug
+      refactor -> build-feature
+      review -> review
   - Must fall back to core skills when no domain skill matches
   - Must never route to unknown pipeline — return error instead
   - Must log route decision for auditability
@@ -33,9 +37,19 @@ routes:
       - skills/core/breakdown
       - skills/core/execute
 
-  - task: review plugin compliance
+  - task: modify mu-plugin
     stack: wordpress
     pipeline: build-feature
+    skills:
+      - skills/wordpress/mu-plugin-development
+      - skills/core/analyze
+      - skills/core/breakdown
+      - skills/core/plan
+      - skills/core/execute
+
+  - task: review plugin compliance
+    stack: wordpress
+    pipeline: review
     skills:
       - skills/wordpress/plugin-directory-guidelines
       - skills/core/analyze
@@ -94,6 +108,50 @@ routes:
       - skills/core/analyze
       - skills/core/breakdown
       - skills/core/execute
+
+  # WordPress – CPT + API (NEW)
+  - task: create cpt
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/core/wp-cpt-api
+      - skills/core/analyze
+      - skills/core/scaffold
+      - skills/core/auto-doc
+      - skills/core/code-review
+
+  - task: create cpt with relations
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/core/wp-cpt-api
+      - skills/core/analyze
+      - skills/core/scaffold
+      - skills/core/auto-doc
+      - skills/core/code-review
+
+  - task: add cpt api endpoints
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/core/wp-cpt-api
+      - skills/core/scaffold
+      - skills/core/auto-doc
+      - skills/core/code-review
+
+  - task: scaffold cpt code
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/core/scaffold
+      - skills/core/analyze
+
+  - task: generate api docs
+    stack: wordpress
+    pipeline: build-feature
+    skills:
+      - skills/core/auto-doc
+      - skills/core/analyze
 
   - task: debug rest endpoint
     stack: wordpress
@@ -374,7 +432,6 @@ routes:
     stack: laravel
     pipeline: build-feature
     skills:
-      - skills/laravel/middleware/create
       - skills/core/analyze
       - skills/core/breakdown
       - skills/core/execute
@@ -392,16 +449,41 @@ routes:
     stack: laravel | nest
     pipeline: build-feature
     skills:
-      - skills/backend/api/create
       - skills/core/analyze
       - skills/core/breakdown
       - skills/core/execute
 
-  - task: fix bug
+  # Core Skills - Scaffold
+  - task: scaffold code
+    stack: wordpress | laravel
+    pipeline: build-feature
+    skills:
+      - skills/core/scaffold
+      - skills/core/analyze
+
+  # Core Skills - Auto-doc
+  - task: generate docs
     stack: any
     pipeline: build-feature
     skills:
+      - skills/core/auto-doc
       - skills/core/analyze
+
+  # Core Skills - Code Review
+  - task: review code
+    stack: any
+    pipeline: review
+    skills:
+      - skills/core/code-review
+      - skills/core/analyze
+      - skills/core/auto-doc
+
+  - task: fix bug
+    stack: any
+    pipeline: debug
+    skills:
+      - skills/core/analyze
+      - skills/core/debug
       - skills/core/breakdown
       - skills/core/execute
 

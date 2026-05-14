@@ -20,7 +20,7 @@ steps:
   - Define implementation phases (1, 2, 3...)
   - Specify validation strategy for each phase
   - Identify risks and mitigation strategies
-  - Estimate token cost for each phase
+  - Estimate context budget for each phase
   - Output structured plan
 
 rules:
@@ -29,7 +29,7 @@ rules:
   - Must identify dependencies between phases
   - Must specify validation strategy for each phase
   - Must identify risks and mitigations
-  - Must estimate token cost per phase
+  - Must estimate context budget per phase
   - Must respect module boundaries from context
   - Must prefer incremental changes over big bang
   - Must define rollback plan for risky changes
@@ -43,7 +43,7 @@ output:
         description: string
         files_affected: string[]
         validation: string
-        token_estimate: low | medium | high
+        context_budget: low | medium | high
     risks:
       - risk: string
         mitigation: string

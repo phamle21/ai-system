@@ -1,0 +1,137 @@
+<?php
+/**
+ * Template: Repository Pattern
+ * 
+ * Hook được dùng:
+ * - WP_Query: Query CPT data (thay vì SQL trực tiếp)
+ * - get_post_meta(): Lấy custom fields (nếu dùng Pods, fields lưu dưới dạng meta)
+ * - get_the_ID(): Lấy post ID hiện tại
+ * 
+ * Repository pattern: Tách data access logic khỏi controller.
+ * Lợi ích: Dễ test, dễ thay đổi query mà không sửa controller, tái sử dụng code.
+ */
+
+namespace JRR\Core\Modules\PostType\[CptName]\Repository;
+
+/**
+ * Repository class for [CptName] CPT.
+ * 
+ * Pattern này được dùng bởi:
+ * - REST Controller (GET list, GET single)
+ * - Admin page (admin list, filter)
+ * - Elementor widgets (frontend display)
+ * - Shortcodes (frontend display)
+ */
+final class [CptName]Repository {
+
+    private const CPT_SLUG = '[cpt_slug]';
+
+    /**
+     * Get [CptName] by ID with full data.
+     * 
+     * WP Hooks: get_post(), get_post_meta()
+     * Giải thích: get_post() lấy object WP_Post từ cache/DB.
+     *             get_post_meta() lấy custom field values.
+     */
+    public function get_by_id(int $id): ?array {
+        $post = get_post($id);
+        
+        if (!$post || $post->post_type !== self::CPT_SLUG) {
+            return null;
+        }
+
+        return [
+            'id'            => (int) $post->ID,
+            'title'         => $post->post_title,
+            'slug'          => $post->post_name,
+            'status'        => $post->post_status,
+            'created'       => $post->post_date,
+            'updated'       => $post->post_modified,
+            // Pods fields → stored as post meta
+            // Thêm các fields theo pods config
+            // 'field_name'    => get_post_meta($id, 'field_name', true),
+        ];
+    }
+
+    /**
+     * Query [CptName] list with filters.
+     * 
+     * WP Hooks: WP_Query class
+     * Giải thích: WP_Query là class chính để query posts trong WordPress.
+     *             tax_query: filter by taxonomy terms (team, racing_class, etc.)
+     *             meta_query: filter by custom field values
+     *             post_type: filter by CPT
+     * 
+     * Performance note: Luôn dùng 'fields' => 'ids' khi chỉ cần IDs để giảm memory.
+     */
+    public function query(array $args = []): array {
+        $defaults = [
+            'post_type'      => self::CPT_SLUG,
+            'post_status'    => 'publish',
+            'posts_per_page' => 20,
+            'paged'          => 1,
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+            'tax_query'      => [],
+            'meta_query'     => [],
+            'fields'         => 'all',  // 'ids' nếu chỉ cần IDs
+        ];
+
+        $query_args = wp_parse_args($args, $defaults);
+
+        // WordPress Query → trả về WP_Query object
+        $query = new \WP_Query($query_args);
+
+        return $this->format_results($query);
+    }
+
+    /**
+     * Get related [CptName] by taxonomy term.
+     * 
+     * WP Hooks: get_posts() (sử dụng WP_Query internals)
+     * Giải thích: get_posts() là wrapper đơn giản của WP_Query,
+     *             trả về array thay vì object.
+     */
+    public function get_by_taxonomy(string $taxonomy, string $term_slug): array {
+        return $this->query([
+            'tax_query' => [
+                [
+                    'taxonomy' => $taxonomy,
+                    'field'    => 'slug',
+                    'terms'    => [$term_slug],
+                ],
+            ],
+            'posts_per_page' => -1,
+        ]);
+    }
+
+    /**
+     * Format query results to consistent array format.
+     */
+    private function format_results(\WP_Query $query): array {
+        $results = [];
+        
+        foreach ($query->posts as $post) {
+            $results[] = $this->get_by_id($post->ID);
+        }
+
+        return [
+            'data'     => $results,
+            'total'    => (int) $query->found_posts,
+            'pages'    => (int) $query->max_num_pages,
+            'current'  => (int) get_query_var('paged', 1),
+        ];
+    }
+
+    /**
+     * Search [CptName] by title or content.
+     * 
+     * WP Hooks: WP_Query với 's' parameter cho search
+     */
+    public function search(string $query_string, array $filters = []): array {
+        return $this->query(array_merge($filters, [
+            's'         => sanitize_text_field($query_string),
+            'posts_per_page' => 20,
+        ]));
+    }
+}

@@ -1,0 +1,63 @@
+name: wp-admin-cpt-action-button
+description: Add custom admin action buttons next to the "Add New" button for WordPress custom post types in wp-admin
+version: 1.0
+compatibility:
+  wordpress: "5.8+"
+  php: "7.4+"
+
+when_to_use:
+  - adding custom admin buttons beside "Add New" in CPT list pages
+  - creating import/export/sync actions for custom post types
+  - adding quick access tools in wp-admin edit screens
+  - extending admin UI for plugins or themes
+  - customizing admin page title actions for post types
+
+input:
+  - post_type: target custom post type slug
+  - action_type: link | modal | ajax | custom
+  - button_label: button text
+  - button_url: target URL or admin action
+  - capability: required capability to display button
+  - context:
+      hook_priority: optional
+      icon_class: optional
+      open_in_new_tab: boolean
+      admin_page_only: boolean
+
+steps:
+  - Detect current admin screen using get_current_screen()
+  - Validate target post type exists with post_type_exists()
+  - Hook into admin page rendering using admin_notices or restrict_manage_posts
+  - Locate page title actions container in edit.php admin screen
+  - Inject custom button beside ".page-title-action"
+  - Validate current user capability before rendering
+  - Escape all URLs and labels using esc_url() and esc_html()
+  - Support optional icons and custom CSS classes
+  - Support nonce generation for protected actions
+  - Support AJAX or modal-based actions if required
+  - Verify button only appears on intended post type screen
+  - Test compatibility with classic admin and Gutenberg-enabled CPTs
+
+rules:
+  - Must verify current screen post type before rendering button
+  - Must not inject buttons globally into all admin pages
+  - Must check user capability before displaying actions
+  - Must sanitize and escape all dynamic output
+  - Must use WordPress hooks instead of modifying core admin HTML directly
+  - Must support multisite-safe admin URLs
+  - Must avoid CSS/JS conflicts with existing admin styles
+  - Must generate nonce for destructive or state-changing actions
+  - Must not rely on jQuery unless necessary
+  - Must keep compatibility with both built-in and custom post types
+
+output:
+  type: code
+  schema:
+    post_type: string
+    hook_used: string
+    button_rendered: boolean
+    button_position: string
+    assets_added:
+      css: string[]
+      js: string[]
+    validation_errors: string[]

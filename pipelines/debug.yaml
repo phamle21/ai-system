@@ -1,0 +1,26 @@
+name: debug
+description: Pipeline for reproducing, isolating, fixing, and validating bugs
+version: 1.0
+
+steps:
+  - analyze: classify symptoms, affected stack, and suspected modules
+  - reproduce: confirm the issue or document why reproduction is blocked
+  - isolate: find the smallest failing case and root cause
+  - execute: apply the minimal fix with injected context
+  - validate: verify the bug is fixed and check likely regressions
+  - summarize: document root cause, fix, validation, and remaining risk
+
+rules:
+  - Must reproduce or clearly state the reproduction blocker before changing code.
+  - Must avoid unrelated refactors.
+  - Must document root cause in the summary.
+  - Must validate the fixed behavior.
+
+output:
+  type: text
+  schema:
+    success: boolean
+    root_cause: string
+    files_changed: string[]
+    validations: string[]
+    residual_risk: string[]

@@ -3,7 +3,7 @@ description: WordPress performance profiling (backend-only) - profiling, autoloa
 version: 1.0
 compatibility:
   wordpress: "6.9+"
-  php: "7.2.24+"
+  php: "8.0+"
 requires: wp_cli
 
 when_to_use:

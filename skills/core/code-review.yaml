@@ -1,0 +1,65 @@
+name: code-review
+description: Auto-review code after task. Syntax, security, performance, conventions + automated docs generation for clean PRs.
+version: 1.1
+
+when_to_use:
+  - after any coding task
+  - before commit
+  - user says "review"
+  - before PR submission
+  - after scaffold or wp-cpt-api skill execution
+
+rules:
+  # Syntax
+  - balanced brackets/parens/braces
+  - no undefined variables
+  - no dead code or unreachable branches
+  - no missing semicolons or closing tags
+
+  # Security
+  - sanitize all inputs (sanitize_text_field, intval, etc.)
+  - escape all outputs (esc_html, esc_attr, esc_url)
+  - nonce check for any POST/AJAX action
+  - never concatenate user input into SQL
+  - permission_callback on ALL REST endpoints
+  - check_ajax_referer before processing AJAX data
+
+  # Performance
+  - no N+1 queries
+  - no unbounded loops
+  - no heavy computations in request loop
+  - cache-bust assets with filemtime()
+  - prefer 'fields' => 'ids' when only IDs needed
+  - use get_post_meta($id, $key, true) for single values
+
+  # Error handling
+  - check null/empty before accessing properties
+  - graceful fallbacks for missing data
+  - try/catch for external API calls
+
+  # Documentation (NEW)
+  - PHPDoc present on all public classes and methods
+  - Hook explanation comments for WordPress hooks
+  - API endpoint descriptions match implementation
+  - Return type hints on all methods
+  - Parameter type hints on all methods
+
+output_format:
+  findings:
+    - file: "path:line"
+      issue: "what's wrong"
+      severity: blocker | warning | suggestion
+      fix: "code fix or description"
+  summary:
+    total: number
+    blockers: number
+    action: fix_blockers | proceed
+  docs_generated:
+    pr_summary: "markdown ready for PR description"
+    api_reference: "markdown for REST API docs"
+    changelog_entry: "markdown for changelog"
+  validation:
+    phpdoc_present: boolean
+    hook_comments_present: boolean
+    security_complete: boolean
+    api_docs_complete: boolean

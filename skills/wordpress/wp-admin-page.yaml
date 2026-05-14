@@ -1,0 +1,294 @@
+name: wp-admin-page
+description: Create custom admin pages, sub-menus, and settings pages in WordPress wp-admin
+version: 1.0
+
+when_to_use:
+  - adding custom admin menu pages for plugins
+  - creating sub-menus under existing menu items
+  - settings pages with Settings API (register_setting, add_settings_section)
+  - custom admin pages with forms and data display
+  - integrating with WordPress settings system
+  - adding sub-menus under native CPT pages
+
+# ============================================================
+# PATTERN 1: TOP-LEVEL MENU + SUB-MENUS
+# ============================================================
+#
+# File: includes/Modules/Admin/{Name}Menu.php
+#
+# class PluginMenu {
+#     public function __construct() {
+#         add_action('admin_menu', [$this, 'register_page']);
+#     }
+#
+#     public function register_page(): void {
+#         add_menu_page(
+#             __('My Plugin', 'my-plugin'),
+#             __('My Plugin', 'my-plugin'),
+#             'edit_posts',
+#             'my-plugin',
+#             [$this, 'render_list'],
+#             'dashicons-admin-generic',
+#             25
+#         );
+#
+#         add_submenu_page(
+#             'my-plugin',
+#             __('Settings', 'my-plugin'),
+#             __('Settings', 'my-plugin'),
+#             'manage_options',
+#             'my-plugin-settings',
+#             [$this, 'render_settings']
+#         );
+#     }
+#
+#     public function render_list(): void {
+#         // Render main list page
+#     }
+#
+#     public function render_settings(): void {
+#         if (!current_user_can('manage_options')) {
+#             wp_die(__('Permission denied', 'my-plugin'));
+#         }
+#         // Render settings
+#     }
+# }
+#
+# Key points:
+# - add_menu_page() for top-level menu, add_submenu_page() for sub-menus
+# - menu_slug must be unique across all plugins
+# - Capability: use most restrictive needed
+# - Icon: dashicons-{name} or base64 SVG
+# - Position: 5 (Tools), 15 (Settings), 20 (Posts), 25 (placeholder), 60 (below default)
+
+# ============================================================
+# PATTERN 2: SETTINGS API PAGE
+# ============================================================
+#
+# File: includes/Modules/Admin/{Name}Settings.php
+#
+# class PluginSettings {
+#     private string $optionGroup = 'my_plugin_general';
+#     private string $optionName  = 'my_plugin_options';
+#
+#     public function __construct() {
+#         add_action('admin_init', [$this, 'register_settings']);
+#     }
+#
+#     public function register_settings(): void {
+#         register_setting(
+#             $this->optionGroup,
+#             $this->optionName,
+#             [$this, 'sanitize']
+#         );
+#
+#         add_settings_section(
+#             'my_plugin_main',
+#             __('General', 'my-plugin'),
+#             [$this, 'render_section_desc'],
+#             'my-plugin-settings'
+#         );
+#
+#         add_settings_field(
+#             'my_plugin_option_name',
+#             __('Option Label', 'my-plugin'),
+#             [$this, 'render_field'],
+#             'my-plugin-settings',
+#             'my_plugin_main'
+#         );
+#     }
+#
+#     public function sanitize(array $input): array {
+#         return [
+#             'option_name' => sanitize_text_field($input['option_name'] ?? ''),
+#         ];
+#     }
+#
+#     public function render_section_desc(): void {
+#         echo '<p>' . esc_html__('Description here.', 'my-plugin') . '</p>';
+#     }
+#
+#     public function render_field(): void {
+#         $options = get_option($this->optionName, []);
+#         $value = $options['option_name'] ?? '';
+#         ?>
+#         <input type="text" name="<?php echo esc_attr($this->optionName); ?>[option_name]"
+#                value="<?php echo esc_attr($value); ?>" class="regular-text">
+#         <?php
+#     }
+# }
+#
+# View template (settings.php):
+#   <?php if (isset($_GET['settings-updated'])): ?>
+#       <div class="notice notice-success is-dismissible">
+#           <p><?php esc_html_e('Settings saved.', 'my-plugin'); ?></p>
+#       </div>
+#   <?php endif; ?>
+#   <div class="wrap">
+#       <h1><?php esc_html_e('Plugin Settings', 'my-plugin'); ?></h1>
+#       <form method="post" action="options.php">
+#           <?php settings_fields($this->optionGroup); ?>
+#           <?php do_settings_sections('my-plugin-settings'); ?>
+#           <?php submit_button(); ?>
+#       </form>
+#   </div>
+#
+# Key points:
+# - admin_init hook for register_setting() — do NOT register in constructor
+# - settings_fields() outputs nonce + field groups automatically
+# - do_settings_sections() renders all sections/fields for the page
+# - submit_button() is the standard WP submit button
+# - Sanitize callback receives raw input array — return sanitized array
+# - Settings updated notice: check isset($_GET['settings-updated'])
+
+# ============================================================
+# PATTERN 3: CUSTOM PAGE WITH WP_LIST_TABLE
+# ============================================================
+#
+# File: includes/Admin/{Name}ListTable.php
+#
+# class MyListTable extends WP_List_Table {
+#     public function __construct() {
+#         parent::__construct([
+#             'singular' => 'item',
+#             'plural'   => 'items',
+#             'ajax'     => false,
+#         ]);
+#     }
+#
+#     public function get_columns(): array {
+#         return [
+#             'cb'       => '<input type="checkbox" />',
+#             'title'    => 'Title',
+#             'date'     => 'Date',
+#             'author'   => 'Author',
+#         ];
+#     }
+#
+#     public function column_default($item, $column_name): void {
+#         echo esc_html($item[$column_name] ?? '');
+#     }
+#
+#     public function column_cb($item): string {
+#         return '<label class="screen-reader-text" for="cb-select-' . $item['id'] . '">' .
+#             'Select item</label>';
+#     }
+#
+#     public function get_items(): array {
+#         $args = [
+#             'post_type'      => 'my_cpt',
+#             'posts_per_page' => -1,
+#         ];
+#         $posts = get_posts($args);
+#         $items = [];
+#         foreach ($posts as $post) {
+#             $items[] = [
+#                 'id'     => $post->ID,
+#                 'title'  => $post->post_title,
+#                 'date'   => $post->post_date,
+#                 'author' => get_the_author_meta('display_name', $post->post_author),
+#             ];
+#         }
+#         return $items;
+#     }
+#
+#     public function prepare_items(): void {
+#         $columns    = $this->get_columns();
+#         $hidden     = [];
+#         $sortable   = $this->get_sortable_columns();
+#         $this->_column_headers = [$columns, $hidden, $sortable];
+#         $this->items = $this->get_items();
+#     }
+#
+#     private function get_sortable_columns(): array {
+#         return ['title' => 'title', 'date' => 'date'];
+#     }
+# }
+#
+# Controller page:
+#   class ListPage {
+#       public function render(): void {
+#           $table = new MyListTable();
+#           $table->prepare_items();
+#           $this->handle_bulk_action($table);
+#           ?>
+#           <div class="wrap">
+#               <h1><?php esc_html_e('Items', 'my-plugin'); ?></h1>
+#               <form method="get">
+#                   <?php
+#                   $table->search_box('Search', 'my-search');
+#                   $table->display();
+#                   ?>
+#               </form>
+#           </div>
+#           <?php
+#       }
+#
+#       private function handle_bulk_action(MyListTable $table): void {
+#           if (!isset($_REQUEST['action']) || $_REQUEST['action'] === '-1') return;
+#           if (!isset($_REQUEST['_wpnonce'])
+#               || !wp_verify_nonce($_REQUEST['_wpnonce'], 'bulk-' . $table->args['plural'])) {
+#               wp_die(__('Security check failed', 'my-plugin'));
+#           }
+#           $ids = isset($_REQUEST['post']) ? array_map('intval', $_REQUEST['post']) : [];
+#           foreach ($ids as $id) {
+#               // process
+#           }
+#           wp_safe_redirect(add_query_arg('treated', count($ids)));
+#           exit;
+#       }
+#   }
+#
+# Key points:
+# - Extend WP_List_Table class
+# - Must implement get_columns(), column_default(), get_items(), prepare_items()
+# - handle_bulk_action() before $table->prepare_items()
+# - Nonce action: 'bulk-{plural}'
+# - wp_safe_redirect() after POST action (PRG pattern)
+
+# ============================================================
+# PATTERN 4: SUB-MENU UNDER EXISTING CPT
+# ============================================================
+#
+# File: includes/Modules/{CPT}/Admin/{Name}SubMenu.php
+#
+# class MyCptSubMenu {
+#     public function __construct() {
+#         add_action('admin_menu', [$this, 'add_submenu']);
+#     }
+#
+#     public function add_submenu(): void {
+#         add_submenu_page(
+#             'edit.php?post_type=my_cpt',
+#             __('Custom View', 'my-plugin'),
+#             __('Custom View', 'my-plugin'),
+#             'read',
+#             'my-cpt-custom',
+#             [$this, 'render']
+#         );
+#     }
+#
+#     public function render(): void {
+#         // Render custom page
+#     }
+# }
+#
+# Key points:
+# - edit.php?post_type={cpt} is the slug for native CPT admin pages
+# - Use minimal capability needed
+# - menu_slug must be unique — prefix with plugin name
+
+# ============================================================
+# RULES
+# ============================================================
+rules:
+  - Menu registration: hook into admin_menu action, not in constructor
+  - Settings: register_setting() on admin_init, not in constructor
+  - Capability: use most restrictive capability needed per page
+  - Settings API: use settings_fields() + do_settings_sections() in form, not manual nonce
+  - Sanitize: sanitize_callback in register_setting handles form field sanitization
+  - Redirection: always redirect after POST action (PRG pattern) to prevent re-submission
+  - Unique slug: menu_slug must be unique across all plugins
+  - Icon: dashicons or base64 SVG for menu icons
+  - Nonce: manual forms need wp_nonce_field() + wp_verify_nonce() — Settings API handles it
+  - Settings updated notice: check isset($_GET['settings-updated']) for success message

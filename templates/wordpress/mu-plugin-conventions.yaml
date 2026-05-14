@@ -1,0 +1,27 @@
+name: wordpress-mu-plugin-conventions
+description: Generic WordPress must-use plugin conventions
+version: 1.0
+
+architecture:
+  bootstrap:
+    - Keep the mu-plugin entrypoint minimal.
+    - Define constants only when required by the project.
+    - Load the autoloader or required files.
+    - Initialize the plugin through the project-established entrypoint.
+  lifecycle:
+    - Mu-plugins auto-load and are not activated from wp-admin.
+    - Do not use activation hooks.
+    - Do not use deactivation hooks.
+    - Do not add uninstall.php.
+
+security:
+  - Sanitize input before use or storage.
+  - Validate business constraints before writes.
+  - Escape output at the render boundary.
+  - Verify nonces for state-changing requests.
+  - Check capabilities for admin actions.
+
+assets:
+  - Register assets through WordPress enqueue APIs.
+  - Use project-approved cache busting.
+  - Avoid hardcoded public URLs when project constants or helpers exist.

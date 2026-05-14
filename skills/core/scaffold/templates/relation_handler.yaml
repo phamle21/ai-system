@@ -1,0 +1,240 @@
+<?php
+/**
+ * Template: Many-Many Relation Handler
+ * 
+ * WP Hooks:
+ * - update_post_meta() / add_post_meta() — lưu relation IDs vào meta
+ * - delete_post_meta() — xóa relation
+ * - get_post_meta() — lấy danh sách related IDs
+ * 
+ * Storage options cho many-many relations:
+ * 
+ * Option A: Meta-based (đơn giản, cho ≤1000 relations)
+ *   Pros: Dễ implement, không cần tạo CPT mới
+ *   Cons: Query chậm khi data lớn, không lưu metadata trên relation
+ *   Pattern: update_post_meta($post_id, 'jrr_related_ids', [1,2,3])
+ * 
+ * Option B: Pivot CPT (khuyên dùng, cho >1000 relations)
+ *   Pros: Query dễ dàng qua WP_Query, lưu được metadata trên relation
+ *   Cons: Cần tạo thêm CPT cho pivot table
+ *   Pattern: Tạo CPT 'rider_group_relation' với fields: rider_id, group_id, role
+ * 
+ * Option C: Taxonomy-based (tối ưu cho query)
+ *   Pros: Dùng built-in WP taxonomy query, cực nhanh
+ *   Cons: Không lưu metadata trên relation, taxonomy không phải cho data
+ *   Pattern: Tạo taxonomy 'group' trên post type 'rider'
+ * 
+ * CHO TÍNH NĂNG NÀY (rider_group ↔ rider):
+ *   Dùng Option A (meta-based) ban đầu vì đơn giản.
+ *   Migration sang Option B khi cần metadata trên relation.
+ */
+
+namespace JRR\Core\Modules\Relation\[CptName]Group;
+
+/**
+ * Relation handler cho rider_group ↔ rider (many-many).
+ * 
+ * Meta keys sử dụng:
+ *   - jrr_group_rider_ids: Lưu rider IDs trong group post meta
+ *   - jrr_group_ids: Lưu group IDs trong rider post meta
+ * 
+ * Pattern: Đồng bộ 2 chiều — khi thêm rider vào group, update meta
+ * cả rider VÀ group post để query nhanh từ 2 phía.
+ */
+final class RiderGroupRelation {
+
+    private const GROUP_CPT = 'rider_group';
+    private const RIDER_CPT = 'rider';
+
+    // Meta keys — phải match với pattern jrr_ + snake_case
+    private const GROUP_RIDER_IDS = 'jrr_group_rider_ids';
+    private const RIDER_GROUP_IDS = 'jrr_rider_group_ids';
+
+    /**
+     * Constructor — đăng ký hooks.
+     * 
+     * Hook: save_post_{post_type}
+     * Giải thích: Tự động sync relations khi rider/group được save.
+     *             Nếu rider có group_ids trong meta, đồng bộ vào group post meta.
+     */
+    public function __construct() {
+        // Auto-sync when rider is saved
+        add_action('save_post_' . self::RIDER_CPT, [$this, 'sync_on_save'], 20, 2);
+        
+        // Auto-sync when group is saved
+        add_action('save_post_' . self::GROUP_CPT, [$this, 'sync_on_save'], 20, 2);
+    }
+
+    /**
+     * Get all groups for a rider.
+     * 
+     * WP Hook: get_post_meta($rider_id, 'jrr_rider_group_ids', true)
+     * Giải thích: Lấy array group IDs từ meta, query WP_Query để lấy group data.
+     */
+    public function get_groups_for_rider(int $rider_id): array {
+        $group_ids = get_post_meta($rider_id, self::RIDER_GROUP_IDS, true);
+        
+        if (!$group_ids || !is_array($group_ids)) {
+            return ['data' => [], 'total' => 0, 'groups' => []];
+        }
+
+        $query = new \WP_Query([
+            'post_type'      => self::GROUP_CPT,
+            'post__in'       => $group_ids,
+            'posts_per_page' => -1,
+            'orderby'        => 'title',
+            'order'          => 'ASC',
+        ]);
+
+        $groups = [];
+        foreach ($query->posts as $post) {
+            $groups[] = [
+                'id'    => (int) $post->ID,
+                'title' => $post->post_title,
+                'slug'  => $post->post_name,
+            ];
+        }
+
+        return [
+            'data'  => $groups,
+            'total' => (int) $query->found_posts,
+            'ids'   => $group_ids,
+        ];
+    }
+
+    /**
+     * Get all riders in a group.
+     * 
+     * WP Hook: get_post_meta($group_id, 'jrr_group_rider_ids', true)
+     */
+    public function get_riders_in_group(int $group_id): array {
+        $rider_ids = get_post_meta($group_id, self::GROUP_RIDER_IDS, true);
+        
+        if (!$rider_ids || !is_array($rider_ids)) {
+            return ['data' => [], 'total' => 0, 'riders' => []];
+        }
+
+        $query = new \WP_Query([
+            'post_type'      => self::RIDER_CPT,
+            'post__in'       => $rider_ids,
+            'posts_per_page' => -1,
+            'orderby'        => 'title',
+            'order'          => 'ASC',
+        ]);
+
+        $riders = [];
+        foreach ($query->posts as $post) {
+            $riders[] = [
+                'id'    => (int) $post->ID,
+                'title' => $post->post_title,
+                'slug'  => $post->post_name,
+            ];
+        }
+
+        return [
+            'data'  => $riders,
+            'total' => (int) $query->found_posts,
+            'ids'   => $rider_ids,
+        ];
+    }
+
+    /**
+     * Add rider to group.
+     * 
+     * WP Hooks: update_post_meta() × 2
+     * Giải thích: Đồng bộ 2 chiều — update meta trên cả rider và group post.
+     *             Giữ 2 meta arrays đồng bộ để query nhanh từ 2 phía.
+     */
+    public function add_rider_to_group(int $rider_id, int $group_id): bool {
+        // Thêm rider_id vào group meta
+        $rider_ids = $this->get_meta_array($group_id, self::GROUP_RIDER_IDS);
+        if (in_array($rider_id, $rider_ids, true)) {
+            return false; // Already in group
+        }
+        $rider_ids[] = $rider_id;
+        update_post_meta($group_id, self::GROUP_RIDER_IDS, array_values($rider_ids));
+
+        // Thêm group_id vào rider meta
+        $group_ids = $this->get_meta_array($rider_id, self::RIDER_GROUP_IDS);
+        if (in_array($group_id, $group_ids, true)) {
+            return false; // Already assigned
+        }
+        $group_ids[] = $group_id;
+        update_post_meta($rider_id, self::RIDER_GROUP_IDS, array_values($group_ids));
+
+        return true;
+    }
+
+    /**
+     * Remove rider from group.
+     * 
+     * WP Hooks: update_post_meta() × 2 (hoặc delete_post_meta nếu empty)
+     */
+    public function remove_rider_from_group(int $rider_id, int $group_id): bool {
+        // Remove from group meta
+        $rider_ids = $this->get_meta_array($group_id, self::GROUP_RIDER_IDS);
+        $rider_ids = array_filter($rider_ids, fn($id) => $id !== $rider_id);
+        $updated = update_post_meta($group_id, self::GROUP_RIDER_IDS, array_values($rider_ids));
+
+        // Remove from rider meta
+        $group_ids = $this->get_meta_array($rider_id, self::RIDER_GROUP_IDS);
+        $group_ids = array_filter($group_ids, fn($id) => $id !== $group_id);
+        update_post_meta($rider_id, self::RIDER_GROUP_IDS, array_values($group_ids));
+
+        return $updated;
+    }
+
+    /**
+     * Batch assign riders to group.
+     * 
+     * Performance: Dùng $wpdb->replace() cho bulk insert khi cần.
+     * Meta-based: update_post_meta gọi wp_cache_set() → Redis cache auto-update.
+     */
+    public function batch_assign(int $group_id, array $rider_ids): array {
+        $assigned = 0;
+        $skipped  = 0;
+
+        foreach ($rider_ids as $rider_id) {
+            if ($this->add_rider_to_group((int) $rider_id, $group_id)) {
+                $assigned++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        return ['assigned' => $assigned, 'skipped' => $skipped];
+    }
+
+    /**
+     * Clear all groups for a rider.
+     */
+    public function clear_rider_groups(int $rider_id): void {
+        delete_post_meta($rider_id, self::RIDER_GROUP_IDS);
+        
+        // Clean up group side references
+        $groups = $this->get_meta_array($rider_id, self::RIDER_GROUP_IDS);
+        foreach ($groups as $group_id) {
+            $rider_ids = $this->get_meta_array($group_id, self::GROUP_RIDER_IDS);
+            $rider_ids = array_filter($rider_ids, fn($id) => $id !== $rider_id);
+            update_post_meta($group_id, self::GROUP_RIDER_IDS, array_values($rider_ids));
+        }
+    }
+
+    /**
+     * Helper: Lấy meta value đảm bảo là array.
+     * get_post_meta có thể trả về string, false, hoặc array.
+     */
+    private function get_meta_array(int $post_id, string $meta_key): array {
+        $value = get_post_meta($post_id, $meta_key, true);
+        
+        if (is_array($value)) {
+            return array_filter($value, 'is_int');
+        }
+        
+        if (is_string($value) && $value !== '') {
+            return [(int) $value];
+        }
+
+        return [];
+    }
+}

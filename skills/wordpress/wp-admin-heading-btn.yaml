@@ -1,0 +1,235 @@
+name: wp-admin-heading-btn
+description: Add custom buttons, actions, and labels to the page heading area (beside "Add New") on WordPress CPT/taxonomy list screens
+version: 1.0
+
+when_to_use:
+  - adding custom buttons beside "Add New" in CPT list pages
+  - adding import/export/sync buttons on admin list screens
+  - adding custom action links or labels in the page heading area
+  - injecting dropdown buttons or bulk action buttons beside "Add New"
+  - showing post count or info text in heading area
+
+# ============================================================
+# PATTERN 1: BUTTON BESIDE "ADD NEW" — LINK STYLE
+# ============================================================
+#
+# File: includes/Modules/{CPT}/Admin/{Name}Button.php
+#
+# class MyCptImportButton {
+#     private string $postType = 'my_cpt';
+#     private string $textDomain = 'my-plugin';
+#
+#     public function __construct() {
+#         add_action('admin_notices', [$this, 'render_button']);
+#     }
+#
+#     public function render_button(): void {
+#         $screen = get_current_screen();
+#         if (!$screen) return;
+#         if ($screen->post_type !== $this->postType) return;
+#         if ($screen->action === 'add') return;
+#         if (!current_user_can('edit_posts')) return;
+#
+#         echo '<p class="add-new-h2">';
+#         printf(
+#             '<a href="%s" class="button button-primary">%s</a>',
+#             esc_url(wp_nonce_url(
+#                 admin_url('edit.php?post_type=' . $this->postType . '&action=my_action'),
+#                 'my_cpt_my_action'
+#             )),
+#             esc_html__('Import', $this->textDomain)
+#         );
+#         echo '</p>';
+#     }
+# }
+#
+# Key points:
+# - Hook into admin_notices to render in the page heading area
+# - Check $screen->post_type matches target CPT
+# - Check $screen->action !== 'add' to only show on list pages
+# - Use <p class="add-new-h2"> to align with "Add New" button
+# - Add wp_nonce_url() for state-changing actions
+# - Capability check: use most restrictive relevant capability
+
+# ============================================================
+# PATTERN 2: BUTTON WITH DROPDOWN
+# ============================================================
+#
+# class BulkImportDropdown {
+#     public function __construct() {
+#         add_action('admin_notices', [$this, 'render_dropdown']);
+#     }
+#
+#     public function render_dropdown(): void {
+#         $screen = get_current_screen();
+#         if (!$screen || $screen->post_type !== 'my_cpt') return;
+#         if ($screen->action === 'add') return;
+#
+#         echo '<p class="add-new-h2">';
+#         echo '<div class="dropdown-wrapper">';
+#         echo '<button type="button" class="button dropdown-toggle" aria-haspopup="true">';
+#         echo esc_html__('Bulk Import', 'my-plugin');
+#         echo ' <span class="wp-ui-arrow"></span>';
+#         echo '</button>';
+#         echo '<ul class="dropdown-menu">';
+#         echo '<li><a class="button" href="' . esc_url(wp_nonce_url(admin_url('edit.php?post_type=my_cpt&action=import_csv'), 'my_cpt_import')) . '">' . esc_html__('Import CSV', 'my-plugin') . '</a></li>';
+#         echo '</ul>';
+#         echo '</div>';
+#         echo '</p>';
+#     }
+# }
+
+# ============================================================
+# PATTERN 3: BUTTON + THICKBOX MODAL
+# ============================================================
+#
+# class ImportModalButton {
+#     public function __construct() {
+#         add_action('admin_notices', [$this, 'render_button']);
+#         add_action('admin_notices', [$this, 'render_modal']);
+#     }
+#
+#     public function render_button(): void {
+#         $screen = get_current_screen();
+#         if (!$screen || $screen->post_type !== 'my_cpt') return;
+#         if ($screen->action === 'add') return;
+#         if (!current_user_can('edit_posts')) return;
+#
+#         $url = add_query_arg(['page' => 'my-import'], admin_url('admin-ajax.php'));
+#         $url = wp_nonce_url($url, 'my_cpt_import');
+#         $url = add_query_arg('tb_iframe', '1', $url);
+#         $url = add_query_arg('width', '700', $url);
+#         $url = add_query_arg('height', '500', $url);
+#
+#         echo '<p class="add-new-h2">';
+#         printf(
+#             '<a href="%s" class="button button-primary thickbox">%s</a>',
+#             esc_url($url),
+#             esc_html__('Import', 'my-plugin')
+#         );
+#         echo '</p>';
+#     }
+#
+#     public function render_modal(): void {
+#         if (empty($_GET['tb_iframe'])) return;
+#
+#         if (isset($_POST['import_submit'])) {
+#             if (!isset($_POST['my_cpt_import_nonce'])
+#                 || !wp_verify_nonce($_POST['my_cpt_import_nonce'], 'my_cpt_import')) {
+#                 wp_die(__('Security check failed', 'my-plugin'));
+#             }
+#             // Process import
+#         }
+#         ?>
+#         <div class="wrap" style="margin-top:20px;">
+#             <h2><?php esc_html_e('Import', 'my-plugin'); ?></h2>
+#             <form method="post" enctype="multipart/form-data">
+#                 <?php wp_nonce_field('my_cpt_import', 'my_cpt_import_nonce'); ?>
+#                 <input type="submit" name="import_submit" class="button button-primary" value="Import">
+#                 <button type="button" class="button thickbox-close" style="margin-left:10px;">Cancel</button>
+#             </form>
+#         </div>
+#         <?php
+#         die();
+#     }
+# }
+#
+# Key points:
+# - tb_iframe=1 triggers thickbox iframe
+# - Modal content: full <div class="wrap"> + <h2>
+# - Check tb_iframe param to only render when thickbox is active
+# - die() after modal content to prevent extra output
+# - Cancel button: use .thickbox-close class
+
+# ============================================================
+# PATTERN 4: BUTTON + AJAX HANDLER (no modal)
+# ============================================================
+#
+# class SyncButtonAjax {
+#     public function __construct() {
+#         add_action('admin_notices', [$this, 'render_button']);
+#         add_action('wp_ajax_my_sync_action', [$this, 'ajax_handler']);
+#     }
+#
+#     public function render_button(): void {
+#         $screen = get_current_screen();
+#         if (!$screen || $screen->post_type !== 'my_cpt') return;
+#         if ($screen->action === 'add') return;
+#         if (!current_user_can('edit_posts')) return;
+#
+#         echo '<p class="add-new-h2">';
+#         printf(
+#             '<a href="#" class="button button-primary my-sync-btn" data-nonce="%s">%s</a>',
+#             esc_attr(wp_create_nonce('my_cpt_sync')),
+#             esc_html__('Sync', 'my-plugin')
+#         );
+#         echo ' <span class="spinner"></span>';
+#         echo '</p>';
+#     }
+#
+#     public function ajax_handler(): void {
+#         check_ajax_referer('my_cpt_sync', 'nonce');
+#         try {
+#             $result = $this->do_sync();
+#             wp_send_json_success(['count' => $result]);
+#         } catch (\Exception $e) {
+#             wp_send_json_error(['message' => $e->getMessage()]);
+#         }
+#     }
+#
+#     private function do_sync(): int {
+#         // Business logic
+#         return 0;
+#     }
+# }
+#
+# JS:
+#   jQuery(document).on('click', '.my-sync-btn', function(e) {
+#       e.preventDefault();
+#       var $btn = jQuery(this);
+#       var $spinner = $btn.next('.spinner');
+#       $spinner.css('visibility', 'visible');
+#       jQuery.post(ajaxurl, {
+#           action: 'my_sync_action',
+#           nonce: $btn.data('nonce')
+#       }, function(response) {
+#           $spinner.css('visibility', 'hidden');
+#           alert(response.success ? response.data.message : response.data.message);
+#       });
+#   });
+
+# ============================================================
+# PATTERN 5: INFO TEXT / COUNT IN HEADING
+# ============================================================
+#
+# class PostCountLabel {
+#     public function render_button(): void {
+#         $screen = get_current_screen();
+#         if (!$screen || $screen->post_type !== 'my_cpt') return;
+#         if ($screen->action === 'add') return;
+#
+#         $count = wp_count_posts('my_cpt');
+#         $total = $count->publish + $count->draft;
+#
+#         echo '<p class="add-new-h2">';
+#         printf(
+#             '<span style="opacity:.7;margin-left:10px;">%s</span>',
+#             sprintf(__('Total: %d', 'my-plugin'), $total)
+#         );
+#         echo '</p>';
+#     }
+# }
+
+# ============================================================
+# RULES
+# ============================================================
+rules:
+  - Hook target: use admin_notices (not admin_head) — buttons render in content area above "Add New"
+  - Screen check: always verify $screen->post_type matches target CPT and $screen->action !== 'add'
+  - Container class: use <p class="add-new-h2"> to align with "Add New" button
+  - Nonce: always add wp_nonce_url() for state-changing actions (import, sync, delete, export)
+  - Capability: check relevant capability before rendering
+  - Enqueue: use admin_enqueue_scripts for admin JS/CSS (not wp_enqueue_scripts)
+  - Spinning: use WP spinner class for AJAX button feedback
+  - Escape: all output must use esc_html(), esc_url(), esc_attr()
+  - For AJAX: use wp_ajax_{action} + check_ajax_referer + wp_send_json_success/error

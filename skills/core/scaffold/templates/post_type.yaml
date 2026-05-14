@@ -1,0 +1,97 @@
+<?php
+/**
+ * Template: CPT Registration
+ * 
+ * WP Hook: init (priority 0)
+ * Giải thích: WordPress gọi hook 'init' khi khởi động, là thời điểm an toàn
+ * để đăng ký CPT, taxonomy, custom post types vì tất cả plugin đã loaded.
+ * 
+ * Tham số add_action('init', callback, priority, accepted_args):
+ *   priority: 0 (default) — chạy trước các hooks khác
+ *   accepted_args: 1 — truyền $post_type vào callback
+ * 
+ * Khi nào chạy: Trước khi load theme, user data, query execution
+ * Chạy bao nhiêu lần: Mỗi request WordPress (front-end + admin)
+ */
+
+namespace JRR\Core\Modules\PostType\[CptName];
+
+use JRR\Core\Modules\PostType\[ParentCpt]\Repository\[ParentCpt]Repository;
+
+/**
+ * Register CPT [CptName] with WordPress.
+ * 
+ * Nếu CPT đã có trong pods-bootstrap/pods-config/, KHÔNG đăng ký lại ở đây.
+ * Chỉ dùng file này để extend: thêm metaboxes, list columns, custom queries.
+ * 
+ * Pods config tham khảo: pods-bootstrap/pods-config/[cpt_name].php
+ */
+final class PostType[CptName] {
+
+    /**
+     * CPT slug — phải match với pods config (nếu dùng Pods)
+     */
+    private const CPT_SLUG = '[cpt_slug]';
+
+    /**
+     * Constructor — lazy instantiate children modules
+     * 
+     * Pattern: Mỗi child class tự đăng ký hooks trong constructor của nó.
+     * Đây là pattern "self-registration" giúp module độc lập, dễ test.
+     */
+    public function __construct() {
+        // Auto-register Pods if NOT in pods-bootstrap
+        // Nếu đã có trong pods-bootstrap, bỏ dòng này
+        add_action('init', [$this, 'register_cpt']);
+
+        // Extension modules (self-register in their constructors)
+        new Repository\[CptName]Repository();
+        new Metabox\[CptName]Metabox();
+
+        // Relation module
+        // new Relation\[RelationName]();
+    }
+
+    /**
+     * Register the CPT with WordPress.
+     * 
+     * Hook: add_action('init', 'register_cpt', 0)
+     * Giải thích: Đăng ký CPT khi WordPress init chạy.
+     * Nếu dùng Pods, hàm này KHÔNG cần gọi — Pods tự đăng ký.
+     * Chỉ giữ lại để custom labels hoặc overrides.
+     */
+    public function register_cpt(): void {
+        // BỎ đoạn này nếu dùng Pods. Chỉ giữ nếu register thủ công.
+        /*
+        register_post_type(self::CPT_SLUG, [
+            'labels'        => $this->labels(),
+            'public'        => true,
+            'show_in_rest'  => true,       // QUAN TRỌNG: bật REST API cho CPT
+            'rest_base'     => self::CPT_SLUG,
+            'supports'      => ['title', 'editor', 'custom-fields'],
+            'has_archive'   => true,
+            'rewrite'       => ['slug' => self::CPT_SLUG],
+            'menu_icon'     => 'dashicons-groups',
+        ]);
+        */
+    }
+
+    /**
+     * Labels cho CPT — hiển thị trong admin menu.
+     */
+    private function labels(): array {
+        return [
+            'name'               => __('[Plural Name]', 'jrr'),
+            'singular_name'      => __('[Singular Name]', 'jrr'),
+            'add_new'            => __('Add New [Singular]', 'jrr'),
+            'add_new_item'       => __('Add New [Singular]', 'jrr'),
+            'edit_item'          => __('Edit [Singular]', 'jrr'),
+            'new_item'           => __('New [Singular]', 'jrr'),
+            'view_item'          => __('View [Singular]', 'jrr'),
+            'search_items'       => __('Search [Plural]', 'jrr'),
+            'not_found'          => __('No [Plural] found', 'jrr'),
+            'not_found_in_trash' => __('No [Plural] found in trash', 'jrr'),
+            'all_items'          => __('All [Plural]', 'jrr'),
+        ];
+    }
+}

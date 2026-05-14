@@ -1,0 +1,221 @@
+name: thickbox
+description: WordPress ThickBox modal dialog — iframe and inline modals in wp-admin
+version: 1.0
+
+when_to_use:
+  - opening iframe modals from admin buttons (import, export, sync, etc.)
+  - creating custom admin modals for forms or content
+  - loading external admin pages inside thickbox
+  - handling modal close/refresh parent behavior
+  - passing data between parent page and modal iframe
+
+# ============================================================
+# PATTERN 1: IFRAME THICKBOX TRIGGER
+# ============================================================
+#
+# File: includes/Modules/{CPT}/Admin/{Name}Button.php
+#
+# class ImportButton {
+#     public function render_button(): void {
+#         $screen = get_current_screen();
+#         if (!$screen || $screen->post_type !== 'my_cpt') return;
+#         if ($screen->action === 'add') return;
+#
+#         // Build thickbox URL
+#         $url = add_query_arg(['page' => 'my-import'], admin_url('admin-ajax.php'));
+#         $url = wp_nonce_url($url, 'my_cpt_import');
+#         $url = add_query_arg('tb_iframe', '1', $url);
+#         $url = add_query_arg('width', '800', $url);
+#         $url = add_query_arg('height', '600', $url);
+#
+#         echo '<a href="' . esc_url($url) . '" class="button button-primary thickbox">Import</a>';
+#     }
+# }
+#
+# Key points:
+# - tb_iframe=1 tells thickbox to open as iframe
+# - width/height set modal dimensions
+# - Use admin-ajax.php or custom admin page URL as source
+# - Must add .thickbox class for auto-initialization
+# - Button can be in admin_notices heading area or anywhere on screen
+
+# ============================================================
+# PATTERN 2: MODAL CONTENT — ADMIN-AJAX BACKED
+# ============================================================
+#
+# AJAX handler that renders modal form:
+#
+# File: includes/Modules/{CPT}/Admin/{Name}Modal.php
+#
+# class ImportModal {
+#     public function handle(): void {
+#         // Only render when tb_iframe is set
+#         if (empty($_GET['page']) || $_GET['page'] !== 'my-import') return;
+#         if (empty($_GET['tb_iframe'])) return;
+#
+#         // Handle AJAX sub-action
+#         if (!empty($_REQUEST['action']) && $_REQUEST['action'] === 'my_import') {
+#             $this->ajax_import();
+#             return;
+#         }
+#
+#         // Handle form submission
+#         if (isset($_POST['import_submit'])) {
+#             if (!isset($_POST['my_cpt_import_nonce'])
+#                 || !wp_verify_nonce($_POST['my_cpt_import_nonce'], 'my_cpt_import')) {
+#                 wp_die(__('Security check failed', 'my-plugin'));
+#             }
+#             $this->process_import();
+#             return;
+#         }
+#
+#         $this->render_form();
+#         die();
+#     }
+#
+#     private function render_form(): void {
+#         ?>
+#         <div class="wrap" style="margin:20px;">
+#             <h2><?php esc_html_e('Import', 'my-plugin'); ?></h2>
+#             <form method="post" enctype="multipart/form-data">
+#                 <?php wp_nonce_field('my_cpt_import', 'my_cpt_import_nonce'); ?>
+#                 <table class="form-table">
+#                     <tr>
+#                         <th><label for="import_file">File</label></th>
+#                         <td><input type="file" id="import_file" name="import_file"></td>
+#                     </tr>
+#                 </table>
+#                 <p class="submit">
+#                     <input type="submit" name="import_submit" class="button button-primary" value="Import">
+#                     <button type="button" class="button thickbox-close">Cancel</button>
+#                 </p>
+#             </form>
+#         </div>
+#         <?php
+#     }
+#
+#     private function ajax_import(): void {
+#         check_ajax_referer('my_cpt_import', 'nonce');
+#         // Process import
+#         wp_send_json_success(['message' => 'Done']);
+#     }
+# }
+#
+# Key points:
+# - Check tb_iframe param to only render when thickbox is active
+# - Must die() after rendering to prevent extra output
+# - Modal content: <div class="wrap"> + <h2> (standard WP admin structure)
+# - Cancel button: use .thickbox-close class (auto-closes via JS)
+
+# ============================================================
+# PATTERN 3: MODAL CONTENT — ADMIN PAGE BACKED
+# ============================================================
+#
+# Register a real admin page and load it in thickbox:
+#
+# File: includes/Modules/{CPT}/Admin/{Name}Page.php
+#
+# class ImportPage {
+#     public function register(): void {
+#         add_management_page('Import', 'Import', 'edit_posts', 'my-import', [$this, 'render']);
+#     }
+#
+#     public function render(): void {
+#         if (!empty($_GET['tb_iframe'])) {
+#             // Render modal content (wrap in .wrap + h2)
+#         } else {
+#             // Render as full admin page
+#         }
+#     }
+# }
+#
+# Thickbox trigger URL:
+#   admin.php?page=my-import&tb_iframe=1&width=800&height=600
+#
+# Key points:
+# - add_management_page() or add_submenu_page() registers the page
+# - Use tb_iframe=1 to load in modal instead of full page
+# - Same page serves both standalone and modal — flexible approach
+# - Good for complex modals with significant content
+
+# ============================================================
+# PATTERN 4: PASSING DATA TO MODAL
+# ============================================================
+#
+# class ViewDetailsButton {
+#     public function render_button(int $postId): void {
+#         $screen = get_current_screen();
+#         if (!$screen || $screen->post_type !== 'my_cpt') return;
+#
+#         $url = add_query_arg([
+#             'post_id' => $postId,
+#             'page'    => 'my-details',
+#         ], admin_url('admin-ajax.php'));
+#         $url = add_query_arg('tb_iframe', '1', $url);
+#         $url = add_query_arg('width', '700', $url);
+#         $url = add_query_arg('height', '500', $url);
+#
+#         echo '<a href="' . esc_url($url) . '" class="button thickbox">View Details</a>';
+#     }
+# }
+#
+# In modal handler:
+#   $post_id = isset($_GET['post_id']) ? (int) $_GET['post_id'] : 0;
+#   $post = get_post($post_id);
+#
+# Key points:
+# - Pass data via URL query params
+# - Sanitize all incoming params in modal handler
+# - add_query_arg() accepts array for multiple params
+
+# ============================================================
+# PATTERN 5: CLOSE MODAL + REFRESH PARENT
+# ============================================================
+#
+# Close after AJAX success (inside modal):
+#
+#   jQuery.post(ajaxurl, formData, function(response) {
+#       if (response.success && response.data.close) {
+#           if (window.parent.tb_remove) {
+#               window.parent.tb_remove();
+#           } else {
+#               tb_remove();
+#           }
+#       }
+#   });
+#
+# Close + redirect parent:
+#
+#   // PHP:
+#   wp_send_json_success([
+#       'close'    => true,
+#       'redirect' => admin_url('edit.php?post_type=my_cpt'),
+#   ]);
+#
+#   // JS:
+#   if (response.data.redirect && window.parent.location) {
+#       window.parent.location.href = response.data.redirect;
+#   }
+#
+# Key points:
+# - window.parent.tb_remove() closes thickbox from inside iframe
+# - window.parent.location.href() redirects parent page
+# - Always check window.parent exists before accessing
+# - class="thickbox-close" for simple cancel/close buttons
+
+# ============================================================
+# RULES
+# ============================================================
+rules:
+  - Thickbox trigger: use tb_iframe=1 + width/height query params on any admin URL
+  - Must add .thickbox class to trigger (auto-initializes via wp_enqueue_media)
+  - Modal content: wrap in <div class="wrap"> with <h2> heading
+  - Always die() or wp_die() after rendering modal content to prevent extra output
+  - Cancel button: use .thickbox-close class for auto-close behavior
+  - AJAX in modal: check tb_iframe param to differentiate from standalone page load
+  - Data passing: use URL query params (add_query_arg) to pass data to modal
+  - Close from iframe: use window.parent.tb_remove()
+  - Redirect parent: use window.parent.location.href after modal close
+  - Sanitize all incoming params in modal
+  - Admin page approach: register page + use tb_iframe=1 for modal variant
+  - Always enqueue wp_enqueue_media() if thickbox JS/CSS needed

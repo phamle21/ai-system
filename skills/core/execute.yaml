@@ -22,7 +22,7 @@ rules:
   - Must never load full project codebase
   - Must fail fast if dependency validation fails
   - Must reuse previous_outputs to avoid re-execution
-  - Must log token usage estimate per execution
+  - Must report context budget estimate per execution
   - Must skip if skill not found — return error instead
 
 output:
@@ -31,6 +31,7 @@ output:
     subtask_id: number
     status: success | failed | skipped
     result: string
-    tokens_used: number
+    context_budget: low | medium | high
+    loaded_files: string[]
     skill_called: string
     errors: string[]

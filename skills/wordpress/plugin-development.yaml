@@ -1,49 +1,53 @@
 name: wp-plugin-development
-description: WordPress plugin architecture - hooks, lifecycle, Settings API, security, data/cron, packaging
-version: 1.0
+description: Generic WordPress plugin architecture - hooks, lifecycle, Settings API, security, data/cron, shortcode, and packaging
+version: 1.1
 compatibility:
-  wordpress: "6.9+"
-  php: "7.2.24+"
+  wordpress: project-defined
+  php: project-defined
 
 when_to_use:
-  - creating or refactoring WordPress plugins
-  - implementing hooks (actions/filters)
-  - plugin activation/deactivation/uninstall
+  - creating or refactoring regular WordPress plugins
+  - implementing hooks, actions, and filters
+  - plugin activation, deactivation, and uninstall flows
   - Settings API integration
-  - security fixes (nonces, capabilities, sanitization, escaping)
+  - security fixes with nonces, capabilities, sanitization, and escaping
+  - shortcode development when the project does not provide a more specific shortcode skill
   - packaging a release
 
 input:
   - plugin_name: name of the plugin
   - task: create | modify | review | debug
-  - features: array of required features (hooks, settings, rest, etc.)
-  - context: { is_multisite, wp_version, php_version }
+  - features: array of required features
+  - context: { is_multisite, wp_version, php_version, plugin_type }
 
 steps:
-  - Run triage to locate plugin entrypoints
-  - Follow predictable architecture: single bootstrap, hooks on load, loader/class for registration, admin-only code behind is_admin()
-  - Implement hooks and lifecycle (activation/deactivation/uninstall) with guardrails
-  - Apply Settings API for admin pages (register_setting, add_settings_section, add_settings_field)
-  - Apply security baseline: validate/sanitize input early, escape output late, nonces + capabilities, $wpdb->prepare for SQL
-  - Handle data storage, cron, migrations if needed
-  - Validate: no fatals on activate, settings save/read correctly, uninstall removes intended data
+  - Detect plugin type and version constraints from project context before implementation
+  - Locate the plugin bootstrap and existing registration patterns
+  - Follow the existing architecture and naming conventions
+  - Implement hooks and lifecycle behavior only when appropriate for the plugin type
+  - Apply Settings API for admin pages when settings are required
+  - Apply security baseline: validate input early, sanitize stored data, escape output late
+  - Handle data storage, cron, migrations, and uninstall behavior only within task scope
+  - Validate: no PHP fatal errors, hooks register once, settings save/read correctly, and output is escaped
 
 rules:
-  - Must use plugin header with all required fields (Plugin Name, License, etc.)
-  - Must prefix all functions/classes with unique plugin prefix
+  - Must not assume WordPress or PHP version; read project context first
+  - Must not hardcode project-specific namespaces, paths, CPTs, taxonomies, or business rules
+  - Must use plugin header fields for regular plugins
+  - Must prefix global functions and hooks with a unique plugin prefix
+  - Must implement activation/deactivation hooks only for regular plugins
+  - Must not add activation/deactivation/uninstall logic for mu-plugins; use skills/wordpress/mu-plugin-development instead
   - Must sanitize input, validate, escape output (SVE pattern)
-  - Must use wp_enqueue_scripts for assets
-  - Must implement activation/deactivation hooks at top-level, not inside other hooks
+  - Must use wp_enqueue_scripts or admin_enqueue_scripts for assets
+  - Must check capabilities before admin actions
+  - Must use wp_create_nonce and check_ajax_referer or wp_verify_nonce for state-changing requests
+  - Must use $wpdb->prepare for custom SQL
   - Must never hardcode credentials or API keys
   - Must use Settings API for admin pages (register_setting, add_settings_section, add_settings_field)
-  - Must sanitize with sanitize_* functions, escape with esc_* functions
-  - Must check capabilities before admin actions
-  - Must use wp_create_nonce / check_ajax_referer for AJAX
-  - Must never expose sensitive data in REST responses
-  - Must flush rewrite rules only after registering CPTs/rules and only when needed
-  - Must use uninstall.php or register_uninstall_hook for safe uninstall
-  - Must avoid heavy side effects at file load time; load on hooks
-  - Must prefer options for small config; custom tables only if necessary
+  - Must never expose sensitive data in API responses
+  - Must flush rewrite rules only after registering CPTs or rewrite rules and only when needed
+  - Must avoid heavy side effects at file load time; register behavior through hooks
+  - Must prefer options for small config; use custom tables only when justified by data volume or query shape
   - Must ensure cron tasks are idempotent with manual run paths
 
 output:
@@ -52,5 +56,5 @@ output:
     plugin_files: string[]
     hooks_registered: string[]
     admin_pages: string[]
-    rest_endpoints: string[]
+    endpoints: string[]
     validation_errors: string[]

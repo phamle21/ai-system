@@ -5,6 +5,7 @@ version: 1.0
 steps:
   - analyze: classify task, detect stack, identify scope
   - breakdown: decompose into atomic subtasks with skill mapping
+  - plan: define implementation phases, dependencies, risks, and validation strategy
   - execute: run each subtask in dependency order, injecting context
   - validate: check all outputs against subtask validation rules
   - summarize: produce final report of what was done
@@ -14,7 +15,7 @@ rules:
   - Must inject only relevant context per step
   - Must reuse skill outputs — never re-execute
   - Must produce summary even on partial failure
-  - Must log token usage across entire pipeline
+  - Must report context budget estimate and loaded files; do not fabricate exact token counts
 
 output:
   type: text
@@ -22,6 +23,7 @@ output:
     success: boolean
     steps_completed: number
     steps_failed: number
-    total_tokens: number
+    context_budget: low | medium | high
+    loaded_files: string[]
     summary: string
     artifacts: string[]

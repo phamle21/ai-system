@@ -11,7 +11,7 @@ steps:
   - Split task into atomic subtasks (each = 1 clear action)
   - Order subtasks by dependency
   - Map each subtask to existing skill or mark as manual
-  - Estimate token cost per subtask (low/med/high)
+  - Estimate context budget per subtask (low/medium/high)
   - Merge sequential same-skill steps
   - Output execution plan
 
@@ -32,5 +32,5 @@ output:
         subtask: string
         skill: skill_path | manual
         depends_on: number[]
-        token_estimate: low | medium | high
+        context_budget: low | medium | high
         validation: string

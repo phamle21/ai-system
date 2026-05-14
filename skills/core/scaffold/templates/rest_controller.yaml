@@ -1,0 +1,495 @@
+<?php
+/**
+ * Template: REST API Controller
+ * 
+ * WP Hooks:
+ * - rest_api_init (priority 0)
+ *   Giải thích: Hook này gọi khi REST API được khởi tạo.
+ *               Dùng register_rest_route() để đăng ký custom endpoints.
+ *               Chạy trước mỗi REST request.
+ * 
+ * - rest_{post_type}_collection_params
+ *   Giải thích: Filter hook để thêm/ sửa query params cho collection endpoint.
+ *               Ví dụ: thêm param 'team', 'racing_class' cho filter.
+ * 
+ * - rest_{post_type}_item_schema
+ *   Giải thích: Filter hook để thêm fields vào response schema.
+ *               Dùng khi cần computed fields hoặc thêm meta vào response.
+ * 
+ * Permission pattern:
+ *   - read (GET): 'edit_posts' hoặc 'publish_posts' tùy CPT
+ *   - create (POST): 'edit_posts' + capability check
+ *   - update (PUT): 'edit_post' + ownership check
+ *   - delete (DELETE): 'delete_post' + ownership check
+ */
+
+namespace JRR\Core\Modules\REST\[CptName];
+
+use WP_REST_Controller;
+use WP_REST_Server;
+use WP_Error;
+use WP_REST_Request;
+use WP_REST_Response;
+
+/**
+ * REST API Controller cho CPT [CptName].
+ * 
+ * Extends WP_REST_Controller để kế thừa base CRUD endpoints:
+ *   GET /wp-json/jrr/v1/[post_type]      → get_items()
+ *   GET /wp-json/jrr/v1/[post_type]/{id}  → get_item()
+ *   POST /wp-json/jrr/v1/[post_type]      → create_item()
+ *   PUT /wp-json/jrr/v1/[post_type]/{id}  → update_item()
+ *   DELETE /wp-json/jrr/v1/[post_type]/{id} → delete_item()
+ * 
+ * Custom endpoints thêm vào trong register_routes():
+ *   GET /[post_type]/{id}/groups          → get_related_groups()
+ *   GET /groups/{id}/riders               → get_group_riders()
+ *   POST /[post_type]/{id}/groups         → assign_to_group()
+ *   DELETE /[post_type]/{id}/groups/{gid} → remove_from_group()
+ */
+final class [CptName]Controller extends WP_REST_Controller {
+
+    private const NAMESPACE = 'jrr/v1';
+    private const REST_BASE = '[cpt_slug]';
+    private const CPT_SLUG  = '[cpt_slug]';
+
+    /**
+     * Constructor — register hooks.
+     * 
+     * Hook: add_action('rest_api_init', 'register_routes', 0)
+     * Giải thích: Đăng ký REST routes khi REST API init.
+     *             Priority 0 để chạy trước các controllers khác.
+     */
+    public function __construct() {
+        add_action('rest_api_init', [$this, 'register_routes'], 0);
+    }
+
+    /**
+     * Register all REST API routes.
+     */
+    public function register_routes(): void {
+        // Base CRUD routes từ WP_REST_Controller
+        register_rest_route(self::NAMESPACE, '/' . self::REST_BASE, [
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [$this, 'get_items'],
+                'permission_callback' => [$this, 'get_items_permissions_check'],
+                'args'                => $this->get_collection_params(),
+            ],
+            [
+                'methods'             => WP_REST_Server::CREATABLE,
+                'callback'            => [$this, 'create_item'],
+                'permission_callback' => [$this, 'create_item_permissions_check'],
+                'args'                => $this->get_endpoint_params(),
+            ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/' . self::REST_BASE . '/(?P<id>\d+)', [
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [$this, 'get_item'],
+                'permission_callback' => [$this, 'get_item_permissions_check'],
+                'args'                => $this->get_endpoint_params(),
+            ],
+            [
+                'methods'             => WP_REST_Server::EDITABLE,
+                'callback'            => [$this, 'update_item'],
+                'permission_callback' => [$this, 'update_item_permissions_check'],
+                'args'                => $this->get_endpoint_params(),
+            ],
+            [
+                'methods'             => WP_REST_Server::DELETABLE,
+                'callback'            => [$this, 'delete_item'],
+                'permission_callback' => [$this, 'delete_item_permissions_check'],
+                'args'                => [],
+            ],
+        ]);
+
+        // Custom relation endpoints
+        // GET /[cpt_slug]/{id}/groups — list groups cho rider
+        register_rest_route(self::NAMESPACE, '/' . self::REST_BASE . '/(?P<id>\d+)/groups', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [$this, 'get_related_groups'],
+            'permission_callback' => [$this, 'get_related_groups_permissions_check'],
+            'args'                => [
+                'per_page' => [
+                    'description' => __('Results per page', 'jrr'),
+                    'type'        => 'integer',
+                    'default'     => 20,
+                    'minimum'     => 1,
+                    'maximum'     => 100,
+                ],
+                'page' => [
+                    'description' => __('Page number', 'jrr'),
+                    'type'        => 'integer',
+                    'default'     => 1,
+                    'minimum'     => 1,
+                ],
+            ],
+        ]);
+
+        // GET groups/{id}/riders — list riders trong group
+        register_rest_route(self::NAMESPACE, '/groups/(?P<id>\d+)/riders', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [$this, 'get_group_riders'],
+            'permission_callback' => [$this, 'get_group_riders_permissions_check'],
+            'args'                => $this->get_collection_params(),
+        ]);
+
+        // POST /[cpt_slug]/{id}/groups — assign rider to group
+        register_rest_route(self::NAMESPACE, '/' . self::REST_BASE . '/(?P<id>\d+)/groups/(?P<group_id>\d+)', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [$this, 'assign_to_group'],
+            'permission_callback' => [$this, 'assign_to_group_permissions_check'],
+            'args'                => [
+                'role' => [
+                    'description' => __('Role in group', 'jrr'),
+                    'type'        => 'string',
+                    'default'     => 'member',
+                ],
+            ],
+        ]);
+
+        // DELETE /[cpt_slug]/{id}/groups/{group_id} — remove relation
+        register_rest_route(self::NAMESPACE, '/' . self::REST_BASE . '/(?P<id>\d+)/groups/(?P<group_id>\d+)', [
+            [
+                'methods'             => WP_REST_Server::DELETABLE,
+                'callback'            => [$this, 'remove_from_group'],
+                'permission_callback' => [$this, 'remove_from_group_permissions_check'],
+                'args'                => [],
+            ],
+        ]);
+    }
+
+    // ==================== BASE CRUD ====================
+
+    public function get_items($request): WP_REST_Response {
+        $repository = new \JRR\Core\Modules\PostType\[CptName]\Repository\[CptName]Repository();
+        $query = $repository->query([
+            'posts_per_page' => $request->get_param('per_page') ?? 20,
+            'paged'          => $request->get_param('page') ?? 1,
+            // Add taxonomy filters from query params
+            'tax_query'      => $this->parse_tax_query($request),
+        ]);
+
+        return new WP_REST_Response($query, 200);
+    }
+
+    public function get_item($request): WP_REST_Response {
+        $repository = new \JRR\Core\Modules\PostType\[CptName]\Repository\[CptName]Repository();
+        $data = $repository->get_by_id((int) $request->get_param('id'));
+
+        if (!$data) {
+            return new WP_Error('not_found', __('[CptName] not found', 'jrr'), ['status' => 404]);
+        }
+
+        return new WP_REST_Response($data, 200);
+    }
+
+    public function create_item($request): WP_REST_Response {
+        // Sanitize input → create post → save meta → return
+        $title  = sanitize_text_field($request->get_param('title'));
+        $status = sanitize_text_field($request->get_param('status') ?? 'draft');
+
+        $post_id = wp_insert_post([
+            'post_title'   => $title,
+            'post_type'    => self::CPT_SLUG,
+            'post_status'  => $status,
+            'post_author'  => get_current_user_id(),
+        ], true);
+
+        if (is_wp_error($post_id)) {
+            return new WP_Error('create_failed', $post_id->get_error_message(), ['status' => 500]);
+        }
+
+        // Save meta fields
+        foreach ($request->get_param('meta') ?? [] as $key => $value) {
+            update_post_meta($post_id, 'jrr_' . sanitize_key($key), sanitize_text_field($value));
+        }
+
+        return new WP_REST_Response($this->get_by_id($post_id), 201);
+    }
+
+    public function update_item($request): WP_REST_Response {
+        $post_id = (int) $request->get_param('id');
+        
+        // Update title if provided
+        if ($request->get_param('title')) {
+            wp_update_post([
+                'ID'          => $post_id,
+                'post_title'  => sanitize_text_field($request->get_param('title')),
+            ]);
+        }
+
+        // Update meta fields
+        foreach ($request->get_param('meta') ?? [] as $key => $value) {
+            update_post_meta($post_id, 'jrr_' . sanitize_key($key), sanitize_text_field($value));
+        }
+
+        $repository = new \JRR\Core\Modules\PostType\[CptName]\Repository\[CptName]Repository();
+        return new WP_REST_Response($repository->get_by_id($post_id), 200);
+    }
+
+    public function delete_item($request): WP_REST_Response {
+        $post_id = (int) $request->get_param('id');
+        $result  = wp_delete_post($post_id, true);
+
+        if (!$result) {
+            return new WP_Error('delete_failed', __('Failed to delete [CptName]', 'jrr'), ['status' => 500]);
+        }
+
+        return new WP_REST_Response(['deleted' => true], 200);
+    }
+
+    // ==================== RELATION ENDPOINTS ====================
+
+    /**
+     * GET /[cpt_slug]/{id}/groups — List groups cho một rider.
+     * 
+     * WP Hooks: get_post_meta()
+     * Giải thích: Lấy danh sách group IDs từ meta, sau đó lấy thông tin groups.
+     * Nếu dùng pivot CPT, query qua pivot post type thay vì meta.
+     */
+    public function get_related_groups($request): WP_REST_Response {
+        $rider_id = (int) $request->get_param('id');
+        $per_page = (int) $request->get_param('per_page') ?? 20;
+        $page     = (int) $request->get_param('page') ?? 1;
+
+        // Query relations (pivot or meta)
+        $group_ids = $this->get_relation_group_ids($rider_id);
+
+        $groups = new \WP_Query([
+            'post_type'      => 'rider_group',
+            'post_status'    => 'publish',
+            'post__in'       => $group_ids,
+            'posts_per_page' => $per_page,
+            'paged'          => $page,
+            'orderby'        => 'title',
+            'order'          => 'ASC',
+        ]);
+
+        $results = [];
+        foreach ($groups->posts as $post) {
+            $results[] = [
+                'id'    => (int) $post->ID,
+                'title' => $post->post_title,
+                'slug'  => $post->post_name,
+            ];
+        }
+
+        return new WP_REST_Response([
+            'data'    => $results,
+            'total'   => (int) $groups->found_posts,
+            'pages'   => (int) $groups->max_num_pages,
+        ], 200);
+    }
+
+    /**
+     * GET /groups/{id}/riders — List riders trong group.
+     */
+    public function get_group_riders($request): WP_REST_Response {
+        $group_id = (int) $request->get_param('id');
+        
+        // Query riders in this group
+        $riders = $this->get_group_rider_ids($group_id);
+
+        $rider_query = new \WP_Query([
+            'post_type'      => 'rider',
+            'post_status'    => 'publish',
+            'post__in'       => $riders,
+            'posts_per_page' => $request->get_param('per_page') ?? 20,
+            'paged'          => $request->get_param('page') ?? 1,
+        ]);
+
+        $results = [];
+        foreach ($rider_query->posts as $post) {
+            $results[] = [
+                'id'    => (int) $post->ID,
+                'title' => $post->post_title,
+                'slug'  => $post->post_name,
+            ];
+        }
+
+        return new WP_REST_Response([
+            'data'  => $results,
+            'total' => (int) $rider_query->found_posts,
+        ], 200);
+    }
+
+    /**
+     * POST /[cpt_slug]/{id}/groups/{group_id} — Assign rider to group.
+     * 
+     * WP Hooks: update_post_meta() / wp_insert_post() (cho pivot)
+     * Giải thích: update_post_meta lưu relation vào post meta.
+     *             wp_insert_post tạo pivot post nếu dùng pivot CPT approach.
+     */
+    public function assign_to_group($request): WP_REST_Response {
+        $rider_id  = (int) $request->get_param('id');
+        $group_id  = (int) $request->get_param('group_id');
+        $role      = sanitize_text_field($request->get_param('role') ?? 'member');
+
+        $this->add_relation($rider_id, $group_id, $role);
+
+        return new WP_REST_Response([
+            'assigned'  => true,
+            'rider_id'  => $rider_id,
+            'group_id'  => $group_id,
+            'role'      => $role,
+        ], 200);
+    }
+
+    /**
+     * DELETE /[cpt_slug]/{id}/groups/{group_id} — Remove relation.
+     * 
+     * WP Hooks: delete_post_meta() / wp_delete_post() (cho pivot)
+     */
+    public function remove_from_group($request): WP_REST_Response {
+        $rider_id  = (int) $request->get_param('id');
+        $group_id  = (int) $request->get_param('group_id');
+
+        $this->remove_relation($rider_id, $group_id);
+
+        return new WP_REST_Response(['removed' => true], 200);
+    }
+
+    // ==================== PERMISSION CALLBACKS ====================
+
+    public function get_items_permissions_check($request): bool {
+        // Public read access — cho phép anonymous nếu cần
+        return true;
+    }
+
+    public function get_item_permissions_check($request): bool {
+        return true;
+    }
+
+    public function create_item_permissions_check($request): bool {
+        return current_user_can('edit_posts');
+    }
+
+    public function update_item_permissions_check($request): bool {
+        return current_user_can('edit_posts');
+    }
+
+    public function delete_item_permissions_check($request): bool {
+        return current_user_can('delete_posts');
+    }
+
+    public function get_related_groups_permissions_check($request): bool {
+        return true;
+    }
+
+    public function get_group_riders_permissions_check($request): bool {
+        return true;
+    }
+
+    public function assign_to_group_permissions_check($request): bool {
+        return current_user_can('edit_posts');
+    }
+
+    public function remove_from_group_permissions_check($request): bool {
+        return current_user_can('edit_posts');
+    }
+
+    // ==================== SCHEMA & PARAMS ====================
+
+    public function get_collection_params(): array {
+        return [
+            'per_page' => [
+                'description'       => __('Results per page', 'jrr'),
+                'type'              => 'integer',
+                'default'           => 20,
+                'minimum'           => 1,
+                'maximum'           => 100,
+                'sanitize_callback' => 'absint',
+            ],
+            'page' => [
+                'description'       => __('Page number', 'jrr'),
+                'type'              => 'integer',
+                'default'           => 1,
+                'minimum'           => 1,
+                'sanitize_callback' => 'absint',
+            ],
+            'search' => [
+                'description'       => __('Search query', 'jrr'),
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            // Thêm taxonomy filters ở đây
+            // 'team' => [...],
+            // 'racing_class' => [...],
+        ];
+    }
+
+    public function get_endpoint_params(): array {
+        return [
+            'title' => [
+                'description'       => __('[CptName] title', 'jrr'),
+                'type'              => 'string',
+                'required'          => true,
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'meta' => [
+                'description' => __('Custom fields', 'jrr'),
+                'type'        => 'object',
+                'default'     => [],
+            ],
+        ];
+    }
+
+    // ==================== INTERNAL HELPERS ====================
+
+    /**
+     * Parse tax_query from REST request params.
+     * Transform 'team' => 'team-slug' → tax_query format.
+     */
+    private function parse_tax_query($request): array {
+        $tax_query = [];
+        
+        // Thêm các taxonomy filters theo cấu hình
+        // foreach (['team', 'racing_class', 'jrr_season'] as $tax) {
+        //     if ($request->get_param($tax)) {
+        //         $tax_query[] = [
+        //             'taxonomy' => $tax,
+        //             'field'    => 'slug',
+        //             'terms'    => array_map('sanitize_text_field', (array) $request->get_param($tax)),
+        //         ];
+        //     }
+        // }
+
+        return $tax_query;
+    }
+
+    /**
+     * Relation helpers — implement theo storage method (meta vs pivot)
+     */
+    private function get_relation_group_ids(int $rider_id): array {
+        // Meta-based approach
+        $group_ids = get_post_meta($rider_id, 'jrr_group_ids', true);
+        return is_array($group_ids) ? $group_ids : [];
+    }
+
+    private function get_group_rider_ids(int $group_id): array {
+        $rider_ids = get_post_meta($group_id, 'jrr_rider_ids', true);
+        return is_array($rider_ids) ? $rider_ids : [];
+    }
+
+    private function add_relation(int $rider_id, int $group_id, string $role = 'member'): void {
+        // Meta-based approach — atomic update
+        $group_ids = get_post_meta($rider_id, 'jrr_group_ids', true);
+        $group_ids = is_array($group_ids) ? $group_ids : [];
+        
+        if (!in_array($group_id, $group_ids, true)) {
+            $group_ids[] = $group_id;
+            update_post_meta($rider_id, 'jrr_group_ids', $group_ids);
+        }
+    }
+
+    private function remove_relation(int $rider_id, int $group_id): void {
+        $group_ids = get_post_meta($rider_id, 'jrr_group_ids', true);
+        $group_ids = is_array($group_ids) ? $group_ids : [];
+        
+        $group_ids = array_filter($group_ids, fn($id) => $id !== $group_id);
+        update_post_meta($rider_id, 'jrr_group_ids', array_values($group_ids));
+    }
+}

@@ -1,0 +1,265 @@
+name: wp-editor
+description: WordPress Editor (wp_editor), TinyMCE, media uploader, and shortcode UI in wp-admin
+version: 1.0
+
+when_to_use:
+  - adding wp_editor() fields to metaboxes or admin pages
+  - configuring editor settings: toolbar levels, media buttons, tinymce
+  - enqueueing editor assets and custom CSS for content area
+  - using WordPress Media Uploader in custom admin screens
+  - building shortcode attribute UIs
+  - sanitizing/escaping editor content
+
+# ============================================================
+# PATTERN 1: BASIC WP_EDITOR IN METABOX
+# ============================================================
+#
+# File: includes/Modules/{CPT}/Metabox/{Name}Editor.php
+#
+# class MyCptContentEditor {
+#     public function render(\WP_Post $post): void {
+#         $content = get_post_meta($post->ID, 'my_cpt_content', true);
+#         wp_editor(
+#             $content,
+#             'my_cpt_content',
+#             [
+#                 'textarea_name'  => 'my_cpt_content',
+#                 'textarea_rows'  => 10,
+#                 'media_buttons'  => true,
+#                 'teeny'          => false,
+#                 'quicktags'      => true,
+#                 'editor_css'     => '<style>.mce-content-body { font-family: sans-serif; }</style>',
+#                 'editor_class'   => 'my-editor-custom',
+#             ]
+#         );
+#     }
+# }
+#
+# Key points:
+# - wp_editor() renders both Classic and Gutenberg editors based on user preference
+# - textarea_name controls form submission key (different from editor_id)
+# - Always provide editor_css for consistent content area styling
+# - media_buttons: true allows inserting media from library
+# - teeny: true for simplified toolbar (fewer buttons)
+# - quicktags: true shows HTML/Text tab bar
+
+# ============================================================
+# PATTERN 2: EDITOR WITH TINYMCE CONFIGURATION
+# ============================================================
+#
+# class MyCptContentEditor {
+#     public function __construct() {
+#         add_action('admin_print_footer_scripts', [$this, 'tinymce_config']);
+#     }
+#
+#     public function render(\WP_Post $post): void {
+#         $content = get_post_meta($post->ID, 'my_cpt_content', true);
+#         wp_editor(
+#             $content,
+#             'my_cpt_content',
+#             [
+#                 'textarea_name' => 'my_cpt_content',
+#                 'media_buttons' => true,
+#                 'tinymce'       => $this->tinymce_settings(),
+#             ]
+#         );
+#     }
+#
+#     private function tinymce_settings(): array {
+#         return [
+#             'toolbar1'  => 'formatselect,bold,italic,underline,|,bullist,numlist,|,link,unlink,|,undo,redo,|,code',
+#             'toolbar2'  => '',
+#             'toolbar3'  => '',
+#             'toolbar4'  => '',
+#             'content_css' => plugins_url('assets/css/editor-style.css', MY_PLUGIN_FILE),
+#             'menubar'   => false,
+#             'branding'  => false,
+#         ];
+#     }
+# }
+#
+# Key points:
+# - toolbar1-4 define TinyMCE button rows (empty string = no row)
+# - content_css for editor area styling (match front-end)
+# - menubar/branding: false to clean up interface
+# - Use admin_print_footer_scripts to inject additional TinyMCE JS config
+
+# ============================================================
+# PATTERN 3: MEDIA UPLOADER — CUSTOM MEDIA FRAME
+# ============================================================
+#
+# File: includes/Modules/{CPT}/Admin/{Name}Uploader.php
+#
+# class MyCptImageUploader {
+#     public function __construct() {
+#         add_action('admin_enqueue_scripts', [$this, 'scripts']);
+#     }
+#
+#     public function scripts(): void {
+#         $screen = get_current_screen();
+#         if (!$screen || $screen->post_type !== 'my_cpt') return;
+#
+#         wp_enqueue_media();
+#         wp_enqueue_script(
+#             'my-cpt-uploader',
+#             MY_PLUGIN_URL . 'assets/js/uploader.js',
+#             ['jquery'],
+#             MY_PLUGIN_VERSION,
+#             true
+#         );
+#         wp_localize_script('my-cpt-uploader', 'myUploader', [
+#             'nonce' => wp_create_nonce('my_cpt_uploader'),
+#         ]);
+#     }
+# }
+#
+# JS (assets/js/uploader.js):
+#   var mediaFrame = null;
+#
+#   jQuery(document).on('click', '.my-upload-btn', function(e) {
+#       e.preventDefault();
+#       var $btn = jQuery(this);
+#       var targetId = $btn.data('target');
+#
+#       if (mediaFrame) {
+#           mediaFrame.open();
+#           return;
+#       }
+#
+#       mediaFrame = wp.media({
+#           title: 'Select Image',
+#           button: { text: 'Use as Image' },
+#           multiple: false,
+#           library: { type: 'image' }
+#       });
+#
+#       mediaFrame.on('select', function() {
+#           var attachment = mediaFrame.state().get('selection').first().toJSON();
+#           jQuery('#' + targetId).val(attachment.url);
+#           jQuery('#' + targetId + '-preview').attr('src', attachment.url).show();
+#       });
+#
+#       mediaFrame.open();
+#   });
+#
+# View template:
+#   <div class="my-image-uploader">
+#       <input type="text" id="my_cpt_image" name="my_cpt_image" value="<?= esc_attr($image ?? '') ?>">
+#       <img id="my_cpt_image-preview" src="<?= esc_url($image ?? '') ?>" style="max-width:200px;display:none;">
+#       <button type="button" class="button my-upload-btn" data-target="my_cpt_image">Upload</button>
+#       <button type="button" class="button my-remove-btn" data-target="my_cpt_image">Remove</button>
+#   </div>
+#
+# Key points:
+# - wp_enqueue_media() loads media library assets (required)
+# - Reuse media frame instance to avoid conflicts in same session
+# - library: { type: 'image' } restricts to images only
+# - wp_localize_script() passes nonce/URLs safely to JS
+
+# ============================================================
+# PATTERN 4: SHORTCODE ATTRIBUTE UI
+# ============================================================
+#
+# File: includes/Modules/{Plugin}/Shortcode/{Name}Ui.php
+#
+# class MyShortcodeUi {
+#     public function render_form(array $data): void {
+#         ?>
+#         <div class="wrap my-shortcode-ui">
+#             <h2><?php esc_html_e('Shortcode Settings', 'my-plugin'); ?></h2>
+#             <table class="form-table">
+#                 <tr>
+#                     <th><label for="display_mode"><?php esc_html_e('Display Mode', 'my-plugin'); ?></label></th>
+#                     <td>
+#                         <select id="display_mode" name="display_mode" class="regular-text">
+#                             <option value="list" <?= selected($data['display_mode'] ?? '', 'list') ?>>List</option>
+#                             <option value="grid" <?= selected($data['display_mode'] ?? '', 'grid') ?>>Grid</option>
+#                         </select>
+#                     </td>
+#                 </tr>
+#                 <tr>
+#                     <th><label for="per_page"><?php esc_html_e('Per Page', 'my-plugin'); ?></label></th>
+#                     <td>
+#                         <input type="number" id="per_page" name="per_page" value="<?= esc_attr($data['per_page'] ?? 10) ?>" class="small-text">
+#                     </td>
+#                 </tr>
+#             </table>
+#             <p class="submit">
+#                 <input type="submit" class="button button-primary" value="Save">
+#             </p>
+#         </div>
+#         <?php
+#     }
+# }
+#
+# Generate shortcode string:
+#   $attrs = shortcode_atts([
+#       'display_mode' => 'list',
+#       'per_page' => 10,
+#   ], $saved_attrs);
+#   echo '[my_shortcode ' . shortcode_atts([], $attrs) . ']';
+#
+# Key points:
+# - Use WP form-table for attribute builders
+# - shortcode_atts() for merging defaults with saved values
+# - Sanitize saved attributes before storing
+# - selected() and checked() helpers for form state
+
+# ============================================================
+# PATTERN 5: EDITOR CONTENT SANITIZATION
+# ============================================================
+#
+# Saving:
+# class EditorContentSave {
+#     public function save(int $post_id): void {
+#         if (!isset($_POST['my_cpt_content_nonce'])
+#             || !wp_verify_nonce($_POST['my_cpt_content_nonce'], 'my_cpt_content')) {
+#             return;
+#         }
+#         if (!current_user_can('edit_post', $post_id)) return;
+#
+#         $allowed = [
+#             'p'       => [],
+#             'br'      => [],
+#             'strong'  => [],
+#             'em'      => [],
+#             'a'       => ['href' => [], 'title' => []],
+#             'ul'      => [],
+#             'ol'      => [],
+#             'li'      => [],
+#             'h2'      => [],
+#             'h3'      => [],
+#             'img'     => ['src' => [], 'alt' => [], 'class' => []],
+#             'div'     => ['class' => []],
+#             'span'    => ['class' => []],
+#         ];
+#
+#         $content = isset($_POST['my_cpt_content'])
+#             ? wp_kses($_POST['my_cpt_content'], $allowed)
+#             : '';
+#
+#         update_post_meta($post_id, 'my_cpt_content', $content);
+#     }
+# }
+#
+# Key points:
+# - NEVER save editor content raw — always sanitize with wp_kses()
+# - Define allowed_tags explicitly with attributes
+# - wp_editor() output is HTML — never use esc_html() on it
+# - On output: echo $content directly (already sanitized), or wp_kses() again if secondary store
+# - Common allowed tags: p, br, strong, em, a, ul, ol, li, h2, h3, img, div, span
+
+# ============================================================
+# RULES
+# ============================================================
+rules:
+  - wp_editor() is the standard — do not build custom textareas for rich content
+  - textarea_name controls form submission key (different from editor_id)
+  - Always provide editor_css to style content area for consistency
+  - media_buttons: true requires wp_enqueue_media() on admin_enqueue_scripts
+  - Reuse media frame JS instance to avoid conflicts in same session
+  - TinyMCE: define toolbar1-4 explicitly, menubar=false, branding=false
+  - Sanitize editor content with wp_kses() — define allowed_tags array
+  - On output: echo editor content directly, do NOT use esc_html()
+  - Shortcode UI: use form-table for attribute builder, shortcode_atts() for merging
+  - enqueue media via admin_enqueue_scripts, not wp_enqueue_scripts

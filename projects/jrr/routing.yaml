@@ -1,0 +1,63 @@
+name: jrr-routing
+description: Project routing overlay for JRR WordPress mu-plugin work
+version: 1.0
+
+project:
+  root: jrr
+  stack:
+    - wordpress
+    - pods
+    - elementor
+    - jquery
+    - scss
+    - nuxt
+  primary_plugin: src/wp-content/mu-plugins/jrr-core
+
+context_files:
+  required:
+    - jrr/.ai/context.yaml
+    - jrr/.ai/architecture.md
+    - jrr/.ai/rules.md
+    - jrr/.ai/notes.md
+  global:
+    - ai-system/rules/ai-engineer-protocol.md
+    - ai-system/rules/engineering-workflow.md
+    - ai-system/rules/wordpress-coding-standards.md
+
+allowed_skills:
+  - skills/core/analyze
+  - skills/core/analyze-overview
+  - skills/core/breakdown
+  - skills/core/breakdown-jrr-tasks
+  - skills/core/execute
+  - skills/core/debug
+  - skills/core/summarize
+  - skills/core/spec-manager
+  - skills/wordpress/mu-plugin-development
+  - skills/wordpress/wp-ajax
+  - skills/wordpress/wpcli-and-ops
+  - projects/jrr/skills/jrr-core-development
+
+denied_skills:
+  - skills/wordpress/block-development
+  - skills/wordpress/block-themes
+  - skills/wordpress/interactivity-api
+  - skills/wordpress/rest-api
+  - skills/wordpress/abilities-api
+  - skills/wordpress/playground
+  - skills/wordpress/wpds
+  - skills/wordpress/phpstan
+
+routing_rules:
+  - Use project context before global defaults.
+  - Route shortcode, AJAX, Pods, and Elementor-related mu-plugin work through projects/jrr/skills/jrr-core-development.
+  - Do not route JRR feature work to REST API, Gutenberg block, block theme, or Interactivity API skills.
+  - Respect existing Pods configuration under pods-bootstrap before adding or changing data fields.
+  - Preserve existing business logic unless the issue explicitly requires changing it.
+
+output:
+  type: routing
+  schema:
+    selected_pipeline: string
+    selected_skills: string[]
+    denied_reason: string

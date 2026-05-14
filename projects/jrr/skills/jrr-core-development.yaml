@@ -1,0 +1,43 @@
+name: jrr-core-development
+description: JRR-specific WordPress mu-plugin implementation skill for jrr-core shortcodes, AJAX, Pods, Elementor, SCSS, and jQuery modules
+version: 1.0
+
+when_to_use:
+  - implementing or fixing JRR features under src/wp-content/mu-plugins/jrr-core
+  - adding or changing JRR shortcodes
+  - adding or changing JRR AJAX handlers
+  - working with Pods-backed CPTs, taxonomies, or metadata
+  - editing JRR shortcode assets, views, SCSS, or jQuery modules
+
+input:
+  - task: feature | bugfix | refactor | review | debug
+  - context: output from jrr/.ai files and projects/jrr/conventions.yaml
+  - target_files: files to inspect or modify
+
+steps:
+  - Load JRR context files before implementation.
+  - Locate the smallest affected module in jrr-core.
+  - Check Pods configuration before changing data-related behavior.
+  - Follow BaseShortcode conventions for shortcode work.
+  - Follow wp_ajax and nonce conventions for AJAX work.
+  - Follow IIFE plus jQuery object literal pattern for JavaScript.
+  - Follow BEM and project breakpoint mixins for SCSS.
+  - Verify output escaping in views and backward compatibility for legacy data.
+
+rules:
+  - Must not change core business logic unless explicitly required by the issue.
+  - Must not redefine Pods CPTs or taxonomies in jrr-core.
+  - Must not use REST API as the default transport for JRR interactive features.
+  - Must not use Gutenberg/block-theme/interactivity skills for JRR work.
+  - Must preserve existing module structure and naming.
+  - Must keep changes surgical and scoped to the requested issue.
+  - Must protect PHP view files with ABSPATH checks.
+  - Must escape all template output with esc_html, esc_attr, or esc_url.
+
+output:
+  type: code
+  schema:
+    files_changed: string[]
+    modules_touched: string[]
+    compatibility_notes: string[]
+    validation_errors: string[]

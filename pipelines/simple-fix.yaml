@@ -1,0 +1,25 @@
+name: simple-fix
+description: Minimal pipeline for low-risk, well-scoped fixes
+version: 1.0
+
+steps:
+  - analyze: classify task, detect stack, identify narrow scope
+  - execute: apply the smallest necessary change with injected context
+  - validate: run focused checks for the changed behavior
+  - summarize: report changes, validation, and residual risk
+
+rules:
+  - Use only when the request is clear and low complexity.
+  - Must still load required project context before editing.
+  - Must not skip validation.
+  - Must escalate to build-feature if scope expands beyond one small behavior.
+
+output:
+  type: text
+  schema:
+    success: boolean
+    steps_completed: number
+    steps_failed: number
+    context_budget: low | medium | high
+    summary: string
+    artifacts: string[]

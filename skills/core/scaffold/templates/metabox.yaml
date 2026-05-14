@@ -1,0 +1,239 @@
+<?php
+/**
+ * Template: Admin Metabox
+ * 
+ * WP Hooks:
+ * - add_meta_boxes (priority 10)
+ *   Giải thích: Hook tạo metabox trong post editor.
+ *               Tham số: add_meta_box($id, $title, $callback, $screen, $context, $priority)
+ *               $screen: post type (vd: 'rider')
+ *               $context: 'normal', 'side', 'advanced'
+ *               $priority: 'high', 'low', 'default'
+ * 
+ * - save_post_{post_type} (priority 10, args: 2)
+ *   Giải thích: Hook lưu data khi save post.
+ *               Tham số 2: $post_id (ID post), $post (WP_Post object)
+ *               Chạy cả khi AJAX save (REST API, Quick Edit)
+ * 
+ * - wp_loaded (priority 0)
+ *   Giải thích: Chạy sau khi WordPress đã load hoàn toàn,
+ *               dùng để đăng ký admin pages, styles, scripts.
+ */
+
+namespace JRR\Core\Modules\PostType\[CptName]\Metabox;
+
+/**
+ * Admin metabox cho CPT [CptName].
+ * 
+ * Pattern: Mỗi metabox là 1 class, tự đăng ký hooks trong constructor.
+ * Metaboxes được chia theo nhóm chức năng (info, settings, relations).
+ */
+final class [CptName]Metabox {
+
+    /**
+     * Constructor — đăng ký hooks.
+     * 
+     * Hook: add_action('add_meta_boxes', 'register', 10)
+     * Giải thích: Gọi register_metabox() khi WordPress chuẩn bị hiển thị editor.
+     *             Tại thời điểm này, tất cả post types đã được register.
+     */
+    public function __construct() {
+        add_action('add_meta_boxes', [$this, 'register'], 10, 2);
+        add_action('save_post_[cpt_slug]', [$this, 'save'], 10, 2);
+    }
+
+    /**
+     * Register metaboxes.
+     * 
+     * Hook: add_meta_box($id, $title, $callback, $post_type, $context, $priority)
+     * Giải thích: Hàm này của WordPress, thêm metabox vào editor.
+     * 
+     * Tham số:
+     *   $id:       'jrr_[cpt_slug]_meta' — duy nhất, dùng làm HTML id
+     *   $title:    'Info' — hiển thị trong admin
+     *   $callback: [$this, 'render'] — hàm render HTML
+     *   $screen:   'cpt_slug' — post type sẽ hiển thị
+     *   $context:  'normal' — bên dưới editor (normal), sidebar (side)
+     *   $priority: 'default' — default (giữa sidebar)
+     */
+    public function register(int $post_id, \WP_Post $post): void {
+        // Chỉ hiển thị trong admin, không phải trong REST/quick edit
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            return;
+        }
+
+        if (!current_user_can('edit_post', $post_id)) {
+            return;
+        }
+
+        // Main info metabox
+        add_meta_box(
+            'jrr_[cpt_slug]_info',       // ID duy nhất
+            __('[CptName] Info', 'jrr'), // Title hiển thị
+            [$this, 'render_info'],       // Render callback
+            '[cpt_slug]',                // Post type
+            'normal',                     // Context
+            'default'                     // Priority
+        );
+
+        // Settings metabox (sidebar)
+        add_meta_box(
+            'jrr_[cpt_slug]_settings',
+            __('Settings', 'jrr'),
+            [$this, 'render_settings'],
+            '[cpt_slug]',
+            'side',
+            'default'
+        );
+    }
+
+    /**
+     * Render metabox: Info
+     * 
+     * WP Hooks: get_post_meta($post_id, 'jrr_field_name', true)
+     * Giải thích: get_post_meta lấy giá trị custom field.
+     *             Tham số 3 (true) = trả về string/single value.
+     *             Nếu bỏ true → trả về array (multiple values).
+     * 
+     * Pattern: $data['key'] ?? 'default' — fallback nếu chưa có value
+     */
+    public function render_info(\WP_Post $post): void {
+        // Protect file from direct access
+        if (!defined('ABSPATH')) {
+            exit;
+        }
+
+        // Nonce field — chống CSRF cho form submission
+        // Hook: wp_nonce_field($action, $name) tạo input hidden với token
+        wp_nonce_field('jrr_[cpt_slug]_meta_nonce', 'jrr_[cpt_slug]_nonce');
+
+        // Post object — WordPress tự populate khi render metabox
+        // $post->ID = post ID đang edit
+        // $post->post_title = post title
+        
+        // Lấy meta values — nếu chưa có → dùng fallback
+        $data = [
+            'field_one'   => get_post_meta($post->ID, 'jrr_field_one', true) ?? '',
+            'field_two'   => get_post_meta($post->ID, 'jrr_field_two', true) ?? '',
+            // Thêm các fields theo yêu cầu
+        ];
+        ?>
+        <table class="form-table">
+            <tr>
+                <th><label for="jrr_field_one"><?php esc_html_e('Field One', 'jrr'); ?></label></th>
+                <td>
+                    <input type="text" 
+                           id="jrr_field_one" 
+                           name="jrr_field_one" 
+                           value="<?php esc_attr($data['field_one']); ?>" 
+                           class="regular-text" />
+                    <p class="description"><?php esc_html_e('Description for field one', 'jrr'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="jrr_field_two"><?php esc_html_e('Field Two', 'jrr'); ?></label></th>
+                <td>
+                    <input type="text" 
+                           id="jrr_field_two" 
+                           name="jrr_field_two" 
+                           value="<?php esc_attr($data['field_two']); ?>" 
+                           class="regular-text" />
+                </td>
+            </tr>
+        </table>
+        <?php
+    }
+
+    /**
+     * Render metabox: Settings
+     */
+    public function render_settings(\WP_Post $post): void {
+        if (!defined('ABSPATH')) {
+            exit;
+        }
+
+        $data = [
+            'status' => get_post_meta($post->ID, 'jrr_status', true) ?? 'active',
+        ];
+        ?>
+        <p>
+            <label for="jrr_status"><?php esc_html_e('Status', 'jrr'); ?></label>
+            <select id="jrr_status" name="jrr_status">
+                <option value="active" <?php selected($data['status'], 'active'); ?>>
+                    <?php esc_html_e('Active', 'jrr'); ?>
+                </option>
+                <option value="inactive" <?php selected($data['status'], 'inactive'); ?>>
+                    <?php esc_html_e('Inactive', 'jrr'); ?>
+                </option>
+            </select>
+        </p>
+        <?php
+    }
+
+    /**
+     * Save metabox data.
+     * 
+     * Hook: add_action('save_post_{post_type}', 'save', 10, 2)
+     * Giải thích: WordPress gọi hook này khi user click "Save/Publish/Update".
+     *             Tham số 1: $post_id — ID post vừa save
+     *             Tham số 2: $post — WP_Post object
+     *             Chạy LẦN HAI sau khi post đã lưu (đặc biệt với revisions)
+     * 
+     * Security checks (BẮT BUỘC):
+     * 1. wp_verify_nonce() — chống CSRF
+     * 2. current_user_can() — kiểm tra permission
+     * 3. autosave check — bỏ qua khi auto-save
+     */
+    public function save(int $post_id, \WP_Post $post): void {
+        // Bỏ qua nếu là autosave (WordPress tự lưu, không cần xử lý)
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            return;
+        }
+
+        // Bỏ qua nếu không phải post type của chúng ta
+        if ($post->post_type !== '[cpt_slug]') {
+            return;
+        }
+
+        // Kiểm tra permission — user có quyền edit post không?
+        if (!current_user_can('edit_post', $post_id)) {
+            return;
+        }
+
+        // Kiểm tra nonce — chống CSRF (Cross-Site Request Forgery)
+        // Giải thích:_nonce được tạo trong render_*(), gửi kèm form submission
+        if (!isset($_POST['jrr_[cpt_slug]_nonce']) || 
+            !wp_verify_nonce(wp_unslash($_POST['jrr_[cpt_slug]_nonce']), 'jrr_[cpt_slug]_meta_nonce')) {
+            return;
+        }
+
+        // Save các fields từ $_POST
+        // sanitize_text_field() — loại bỏ tag HTML, trim whitespace
+        // wp_unslash() — bỏ slash được thêm bởi WordPress magic_quotes
+        if (isset($_POST['jrr_field_one'])) {
+            update_post_meta(
+                $post_id, 
+                'jrr_field_one', 
+                sanitize_text_field(wp_unslash($_POST['jrr_field_one']))
+            );
+        }
+
+        if (isset($_POST['jrr_field_two'])) {
+            update_post_meta(
+                $post_id, 
+                'jrr_field_two', 
+                sanitize_text_field(wp_unslash($_POST['jrr_field_two']))
+            );
+        }
+
+        if (isset($_POST['jrr_status'])) {
+            $allowed = ['active', 'inactive'];
+            $status  = sanitize_text_field(wp_unslash($_POST['jrr_status']));
+            update_post_meta(
+                $post_id, 
+                'jrr_status', 
+                in_array($status, $allowed, true) ? $status : 'active'
+            );
+        }
+    }
+}

@@ -1,13 +1,13 @@
-# AI SYSTEM ARCHITECTURE – MULTI PROJECT (PRODUCTION READY)
+# AI SYSTEM ARCHITECTURE - MULTI PROJECT
 
 ## 1. Mục tiêu hệ thống
 
 Xây dựng một hệ thống AI có khả năng:
 
 * Tái sử dụng cho nhiều dự án (multi-project)
-* Hỗ trợ nhiều stack (WordPress, Laravel, React, Next, Nest…)
-* Giảm token usage (quan trọng)
-* Chuẩn hóa cách AI phân tích → lập kế hoạch → thực thi
+* Hỗ trợ nhiều stack (WordPress, Laravel, frontend)
+* Giảm context usage bằng cách load đúng file cần thiết
+* Chuẩn hóa cách AI phân tích -> lập kế hoạch -> thực thi
 * Dễ mở rộng (scale skill + project + workflow)
 
 ---
@@ -21,7 +21,7 @@ Xây dựng một hệ thống AI có khả năng:
 * Project: context riêng
 * Pipeline: flow thực thi
 
-👉 Không trộn các layer
+Không trộn các layer.
 
 ---
 
@@ -39,7 +39,7 @@ Xây dựng một hệ thống AI có khả năng:
 
 ---
 
-### 2.4 Token Optimization
+### 2.4 Context Optimization
 
 * Không load toàn bộ system
 * Chỉ load:
@@ -50,56 +50,41 @@ Xây dựng một hệ thống AI có khả năng:
 
 ---
 
-## 3. Cấu trúc thư mục chuẩn
+## 3. Cấu trúc thư mục hiện tại
 
 ```
 ai-system/
 ├── skills/
 │   ├── core/
 │   │   ├── analyze.yaml
-│   │   ├── plan.yaml
 │   │   ├── breakdown.yaml
-│   │   ├── summarize.yaml
-│   │   └── debug.yaml
-│
+│   │   ├── plan.yaml
+│   │   ├── execute.yaml
+│   │   ├── debug.yaml
+│   │   └── summarize.yaml
 │   ├── wordpress/
 │   ├── laravel/
 │   ├── frontend/
-│   ├── backend/
-│
+│   └── testing/
 ├── agents/
-│   ├── router.yaml
-│   ├── analyzer.yaml
-│   ├── planner.yaml
-│   ├── executor.yaml
-│   ├── reviewer.yaml
-│   └── summarizer.yaml
-│
+│   └── router.yaml
 ├── pipelines/
 │   ├── build-feature.yaml
 │   ├── debug.yaml
-│   ├── refactor.yaml
-│   └── code-review.yaml
-│
+│   ├── review.yaml
+│   └── simple-fix.yaml
 ├── templates/
 │   ├── wordpress/
-│   ├── laravel/
 │   └── shared/
-│
 ├── projects/
-│   ├── project-a/
-│   ├── project-b/
-│
+│   └── jrr/
 ├── rules/
-│   ├── coding.md
-│   ├── security.md
-│   └── performance.md
-│
+│   ├── ai-engineer-protocol.md
+│   ├── engineering-workflow.md
+│   └── wordpress-coding-standards.md
 ├── tools/
-│   ├── validate.sh
-│   ├── lint.sh
-│   └── generate.sh
-│
+│   ├── validate-ai-system.py
+│   └── validate-ai-system.sh
 └── README.md
 ```
 
@@ -135,16 +120,16 @@ output:
 
 * 1 skill = 1 nhiệm vụ rõ ràng
 * Không dài quá 150–300 dòng
-* Không chứa context project
+* Không chứa context project; project-specific logic belongs in `projects/[project]/`
 * Có rule rõ ràng (rất quan trọng)
 
 ---
 
 ## 5. Agents (Orchestrator)
 
-### 5.1 Router
+### 5.1 Router hiện có
 
-Chọn skill phù hợp
+`agents/router.yaml` chọn pipeline và skill theo task, stack, và project overlay.
 
 ```yaml
 when:
@@ -154,43 +139,16 @@ when:
 
 ---
 
-### 5.2 Analyzer
-
-* Hiểu yêu cầu
-* Detect stack
-
----
-
-### 5.3 Planner
-
-* Chia task thành step nhỏ
-
----
-
-### 5.4 Executor
-
-* Gọi skill
-* Inject context
-
----
-
-### 5.5 Reviewer
-
-* Check output
-* Validate code
-
----
-
-### 5.6 Summarizer
-
-* Tạo report
-* Tóm tắt
-
----
-
 ## 6. Pipeline (Workflow)
 
-Ví dụ:
+Pipelines hiện có:
+
+* `simple-fix`: analyze -> execute -> validate -> summarize
+* `build-feature`: analyze -> breakdown -> plan -> execute -> validate -> summarize
+* `debug`: analyze -> reproduce -> isolate -> execute -> validate -> summarize
+* `review`: analyze -> inspect -> findings -> summarize
+
+Ví dụ `build-feature`:
 
 ```yaml
 name: build-feature

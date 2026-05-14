@@ -1,0 +1,46 @@
+name: wp-mu-plugin-development
+description: WordPress must-use plugin architecture - bootstrap, autoloading, hooks, security, and project overlays
+version: 1.0
+compatibility:
+  wordpress: project-defined
+  php: project-defined
+
+when_to_use:
+  - creating or refactoring WordPress mu-plugins
+  - editing code under wp-content/mu-plugins
+  - implementing hooks in auto-loaded plugin code
+  - adding shortcodes, AJAX handlers, admin behavior, or frontend behavior inside a mu-plugin
+  - reviewing mu-plugin bootstrap and lifecycle assumptions
+
+input:
+  - plugin_name: name of the mu-plugin
+  - task: create | modify | review | debug
+  - context: { project_root, mu_plugin_path, namespace, wp_version, php_version }
+
+steps:
+  - Load project context and confirm the target is a mu-plugin
+  - Locate the mu-plugin bootstrap file and autoload strategy
+  - Keep bootstrap minimal: constants, autoload, initialization
+  - Register hooks from classes or project-established modules
+  - Apply project security, escaping, asset, and data conventions
+  - Validate that no activation, deactivation, or uninstall assumptions were introduced
+
+rules:
+  - Must not use register_activation_hook for mu-plugins
+  - Must not use register_deactivation_hook for mu-plugins
+  - Must not add uninstall.php for mu-plugins
+  - Must not assume plugin admin activation because mu-plugins auto-load
+  - Must define constants and bootstrap only if missing and required by the task
+  - Must follow project namespace and module registration conventions
+  - Must avoid heavy side effects at file load time
+  - Must sanitize input, validate data, and escape output
+  - Must register frontend assets through WordPress enqueue APIs
+  - Must cache-bust local assets with a project-approved version strategy
+
+output:
+  type: code
+  schema:
+    files_changed: string[]
+    hooks_registered: string[]
+    lifecycle_checks: string[]
+    validation_errors: string[]

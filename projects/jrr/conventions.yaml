@@ -1,0 +1,56 @@
+name: jrr-conventions
+description: JRR project-specific implementation conventions layered over generic WordPress rules
+version: 1.0
+
+plugin:
+  type: mu-plugin
+  path: src/wp-content/mu-plugins/jrr-core
+  namespace: JRR\Core
+  php: "8.0+"
+
+shortcodes:
+  base_class: BaseShortcode
+  rules:
+    - Use render_view('index.php', vars) for templates.
+    - Register assets with filemtime cache busting.
+    - Use private const STYLE and private const SCRIPT.
+    - Override register_assets() and render(atts, content, shortcode_name).
+
+ajax:
+  pattern:
+    - check nonce
+    - sanitize input
+    - run business logic
+    - send wp_send_json_success or wp_send_json_error
+  transport: wp_ajax
+  rest_api: disabled_for_project_default
+
+frontend:
+  javascript:
+    - IIFE plus jQuery object literal module pattern.
+    - Delegated events through document.
+    - Namespaced events with a .jrrModule suffix.
+    - Debounce search input and abort previous AJAX requests.
+  scss:
+    - BEM naming.
+    - Use project breakpoint mixins.
+    - Keep nesting shallow.
+    - Prefer CSS custom properties for spacing and colors.
+
+data:
+  cpts:
+    - rider
+    - jrr_race
+    - jrr_venue
+    - jrr_standing
+    - jrr_organizer
+    - jrr_rider_comment
+  taxonomies:
+    - team
+    - racing_class
+    - jrr_season
+    - jrr_race_number
+  rules:
+    - Pods owns CPT and taxonomy definitions.
+    - jrr-core extends Pods behavior and should not redefine Pods data structures.
+    - Custom meta keys use snake_case and the jrr_ prefix when project-owned.

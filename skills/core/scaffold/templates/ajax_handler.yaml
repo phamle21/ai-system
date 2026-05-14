@@ -1,0 +1,160 @@
+<?php
+/**
+ * Template: AJAX Handler
+ * 
+ * WP Hooks:
+ * - wp_ajax_{action} (priority 10)
+ *   Giải thích: Hook xử lý AJAX requests từ logged-in users.
+ *               $action phải match với JS gửi lên: jQuery.post(action: 'jrr_[name]')
+ *               Tự động die() sau khi callback chạy — KHÔNG echo/return HTML
+ * 
+ * - wp_ajax_nopriv_{action} (priority 10)
+ *   Giải thích: Hook xử lý AJAX requests từ public/anonymous users.
+ *               Dùng cho frontend search, public filters không cần login.
+ * 
+ * Flow pattern (BẮT BUỘC theo thứ tự):
+ *   1. check_ajax_referer() — verify nonce, die() nếu fail
+ *   2. Sanitize input — sanitize_text_field, absint, wp_unslash
+ *   3. Capability check — current_user_can() nếu cần
+ *   4. Business logic — gọi repository/service
+ *   5. wp_send_json_success() hoặc wp_send_json_error()
+ * 
+ * QUAN TRỌNG: KHÔNG echo/return HTML trong AJAX handler.
+ *             Dùng wp_send_json_*() để output JSON, tự động die().
+ */
+
+namespace JRR\Core\Modules\AJAX\[ActionName];
+
+/**
+ * AJAX handler cho [action_description].
+ * 
+ * Pattern: Class-based handler, tự đăng ký hooks trong constructor.
+ * 
+ * Registration pattern trong module constructor:
+ *   add_action('wp_ajax_jrr_[action]', [$this, 'ajax_handler']);
+ *   add_action('wp_ajax_nopriv_jrr_[action]', [$this, 'ajax_handler']);
+ * 
+ * JS side pattern:
+ *   jQuery.post(ajaxurl, {
+ *       action: 'jrr_[action]',
+ *       nonce:  data.nonce,
+ *       param:  value
+ *   })
+ */
+final class [ActionName]Handler {
+
+    /**
+     * Action name — dùng làm AJAX action identifier
+     * Format: jrr_[module]_[action]
+     */
+    private const ACTION = 'jrr_[action_name]';
+
+    /**
+     * Constructor — đăng ký AJAX hooks.
+     * 
+     * Hook: add_action('wp_ajax_{action}', 'ajax_handler')
+     * Giải thích: Đăng ký AJAX handler cho logged-in users.
+     *             WordPress tự gọi ajax_handler() khi nhận request POST
+     *             với _action = 'jrr_[action_name]' trong body.
+     * 
+     * wp_ajax_nopriv_: tương tự nhưng cho public/anonymous requests.
+     * Nếu endpoint cần login, bỏ wp_ajax_nopriv hook.
+     */
+    public function __construct() {
+        // Logged-in users
+        add_action('wp_ajax_' . self::ACTION, [$this, 'ajax_handler']);
+        
+        // Public/anonymous users (bỏ nếu cần login)
+        add_action('wp_ajax_nopriv_' . self::ACTION, [$this, 'ajax_handler']);
+    }
+
+    /**
+     * Main AJAX handler.
+     * 
+     * WP Hooks:
+     * - check_ajax_referer() — verify nonce, tự động die() nếu fail
+     * - wp_send_json_success(data) — output JSON {success: true, data: ...}, tự động die()
+     * - wp_send_json_error(message) — output JSON {success: false, message: ...}, tự động die()
+     * 
+     * Lưu ý: KHÔNG echo, KHÔNG return value. wp_send_json_*() tự động die().
+     */
+    public function ajax_handler(): void {
+        // 1. Nonce verification — chống CSRF
+        // check_ajax_referer(action, name, die)
+        // action: 'jrr_[action_name]_nonce' — phải match với wp_create_nonce() trong JS/render
+        // name: 'nonce' — name attribute của input/param chứa nonce
+        // die: false — KHÔNG tự động die(), để tự handle error
+        check_ajax_referer('jrr_[action_name]_nonce', 'nonce', false);
+
+        // 2. Sanitize inputs — luôn sanitize mọi input từ $_POST/$_GET
+        // wp_unslash() — bỏ slashes WordPress thêm
+        // sanitize_text_field() — strip tags, trim, convert to UTF-8
+        // absint() — đảm bảo là integer >= 0
+        $search     = sanitize_text_field(wp_unslash($_POST['search'] ?? ''));
+        $per_page   = absint($_POST['per_page'] ?? 20);
+        $page       = absint($_POST['page'] ?? 1);
+        $category   = sanitize_text_field(wp_unslash($_POST['category'] ?? ''));
+
+        // 3. Capability check — nếu cần login
+        // current_user_can('capability') — kiểm tra user có quyền không
+        // Nếu endpoint public (search, filter), bỏ phần này
+        /*
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(__('Permission denied', 'jrr'), 403);
+            return;
+        }
+        */
+
+        // 4. Business logic — gọi repository/service
+        try {
+            $repository = new \JRR\Core\Modules\PostType\[CptName]\Repository\[CptName]Repository();
+            
+            $result = $repository->query([
+                'posts_per_page' => $per_page,
+                'paged'          => $page,
+                's'              => $search,
+                'tax_query'      => $category ? [
+                    [
+                        'taxonomy' => 'team',
+                        'field'    => 'slug',
+                        'terms'    => [$category],
+                    ],
+                ] : [],
+            ]);
+        } catch (\Exception $e) {
+            // Log error (không expose chi tiết cho client)
+            error_log('[jrr_' . '[action_name]' . '] ' . $e->getMessage());
+            wp_send_json_error(__('Internal server error', 'jrr'), 500);
+            return;
+        }
+
+        // 5. Send success response
+        // wp_send_json_success(data) → JSON: {success: true, data: data}
+        // wp_send_json_error(message, status) → JSON: {success: false, message: message}
+        wp_send_json_success($result);
+    }
+
+    /**
+     * Create nonce for AJAX requests.
+     * 
+     * Gọi hàm này trong render/template để tạo nonce, gửi cho JS.
+     * 
+     * wp_create_nonce(action) → tạo token 1 lần dùng
+     * action: 'jrr_[action_name]_nonce' — phải match check_ajax_referer()
+     */
+    public static function create_nonce(): string {
+        return wp_create_nonce('jrr_[action_name]_nonce');
+    }
+
+    /**
+     * Get nonce data array for passing to template/JS.
+     * 
+     * Pattern: Gửi nonce qua data attributes hoặc render var
+     */
+    public static function nonce_data(): array {
+        return [
+            'nonce'  => self::create_nonce(),
+            'action' => self::ACTION,
+        ];
+    }
+}

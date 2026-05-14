@@ -1,0 +1,135 @@
+name: wp-cpt-api
+description: End-to-end skill for creating Custom Post Types with REST API, relations, and admin UI. Orchestrates scaffold → generate → review → document pipeline. Single skill for complete CPT feature implementation.
+version: 1.0
+compatibility:
+  wordpress: "6.9+"
+  php: "8.0+"
+
+when_to_use:
+  - creating a new CPT with full feature set
+  - adding REST API for existing CPT
+  - creating many-many relations between CPTs
+  - complete feature: CPT + fields + API + admin metaboxes
+  - when user says "create CPT [name]" or "add [feature] API"
+
+input:
+  - post_type: CPT slug (e.g., "rider_group")
+  - labels: { singular: string, plural: string, description: string }
+  - fields: array of { name: string, type: string, label: string, required: boolean, default: mixed }
+  - supports: array (title, editor, thumbnail, custom-fields)
+  - show_in_rest: boolean (default true)
+  - rest_base: string (default = post_type slug)
+  - relationships: array of { type: "many-many" | "many-one" | "one-many", target: string, storage: "meta" | "pivot", field_name: string }
+  - admin_ui: { metaboxes: array, list_columns: array, filters: array }
+  - api_permissions: { read: string, create: string, update: string, delete: string }
+
+steps:
+  - Phase 1: Analyze & Validate
+    1. Check existing CPTs via project_context → ensure no slug conflicts
+    2. Verify fields types against allowed WP meta types:
+       - text, number, boolean, email, url, date, datetime, textarea, wysiwyg, file, image, relationship, term_relationship, acf_fa
+    3. Validate relationship targets exist or are valid strings
+    4. Check if Pods bootstrap config exists → use Pods pattern instead of manual registration
+    5. Output validation report
+
+  - Phase 2: Scaffold — Generate Files
+    Use scaffold skill to generate:
+    1. CPT registration file: PostType/{CptName}/PostType[CptName].php
+    2. Repository: PostType/{CptName}/Repository/[CptName]Repository.php
+    3. Metabox: PostType/{CptName}/Metabox/[CptName]Metabox.php
+    4. REST Controller: REST/[CptName]Controller.php
+    5. Relation handler (if relationships defined): Relation/[RelationName].php
+    6. Pods bootstrap config (if not using Pods): pods-bootstrap/pods-config/[cpt_name].php
+
+    Each generated file includes:
+    - WP hook explanation comments (Vietnamese)
+    - Exact file path
+    - Namespace and class structure
+    - Security checks (nonce, capability, sanitization)
+
+  - Phase 3: Register Modules
+    Update the parent module to instantiate new sub-modules:
+    ```php
+    // In Modules/PostType/[CptName]/PostType[CptName].php
+    public function __construct() {
+        new Repository\[CptName]Repository();
+        new Metabox\[CptName]Metabox();
+        new \JRR\Core\Modules\REST\[CptName]Controller();
+        new \JRR\Core\Modules\Relation\[RelationName]();
+    }
+    ```
+
+  - Phase 4: Register Hooks in Plugin Bootstrap
+    Ensure modules are auto-loaded via composer autoload:
+    ```yaml
+    # composer.json autoload-psr4
+    "JRR\\Core\\": "src/Modules/"
+    ```
+    And lazy instantiation in Plugin.php:
+    ```php
+    // In JRR\Core\Core\Plugin::init()
+    // No manual registration needed — modules self-register via hooks
+    // Each module calls add_action/add_filter in its constructor
+    new \JRR\Core\Modules\PostType\[CptName]\PostType[CptName]();
+    ```
+
+  - Phase 5: Generate API Documentation
+    Run auto-doc skill to generate:
+    1. PR summary with all changes
+    2. API reference for all endpoints
+    3. Changelog entry
+    4. Testing commands
+
+  - Phase 6: Code Review
+    Run code-review skill on all generated files:
+    1. Syntax check (balanced brackets, no undefined vars)
+    2. Security check (nonce, sanitization, escaping, capability)
+    3. Performance check (N+1 queries, unbounded loops)
+    4. Convention check (namespace, naming, type hints)
+
+  - Phase 7: Output Implementation Report
+    Generate final report with:
+    - Complete file list with paths
+    - API endpoints table
+    - Hooks used with explanations
+    - Testing checklist
+    - Next steps
+
+rules:
+  - Must validate CPT slug against existing CPTs before generating
+  - Must use scaffold skill for code generation (never write code directly)
+  - Must use auto-doc skill for documentation (never skip docs)
+  - Must use code-review skill before finalizing (never skip review)
+  - Must include WP hook explanation comments in all generated files
+  - Must follow JRR namespace: JRR\Core\Modules\[Module]\[SubModule]
+  - Must use final classes with constructor self-registration
+  - Must include permission callbacks for ALL REST endpoints
+  - Must include nonce verification for ALL AJAX handlers
+  - Must escape all output, sanitize all input
+  - Must use meta-based storage for many-many by default (simpler)
+  - Must generate both base CRUD endpoints AND custom relation endpoints
+  - Must verify no N+1 queries in generated code
+  - Must include Vietnamese hook explanations for beginner accessibility
+  - Must prioritize: Pods config first, manual registration fallback
+  - Must generate changelog entry automatically
+
+output:
+  type: text
+  schema:
+    status: "success" | "failed" | "review_issues"
+    files_generated:
+      - path: string
+        type: "new" | "modified"
+    api_endpoints:
+      - method: string
+        path: string
+        permission: string
+    hooks_registered: string[]
+    review_results:
+      syntax_ok: boolean
+      security_ok: boolean
+      performance_ok: boolean
+      conventions_ok: boolean
+    doc_generated: boolean
+    errors: string[]
+    warnings: string[]

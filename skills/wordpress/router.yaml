@@ -2,8 +2,8 @@ name: wordpress-router
 description: Classify WordPress repos (plugin/theme/block theme/Gutenberg/WP core) and route to correct domain skill
 version: 1.0
 compatibility:
-  wordpress: "6.9+"
-  php: "7.2.24+"
+  wordpress: project-defined
+  php: project-defined
 
 when_to_use:
   - at start of WordPress tasks to identify repo type
@@ -16,8 +16,8 @@ input:
   - constraints: WP version targets, WP.com specifics, release requirements
 
 steps:
-  - Run triage: node skills/wp-project-triage/scripts/detect_wp_project.mjs
-  - Parse triage output for project.kind, tooling, tests, versions
+  - Load skills/wordpress/project-triage and inspect project files
+  - Parse triage output for project.kind, tooling, tests, and versions
   - Route to domain skills based on user intent + repo kind
   - Apply guardrails: confirm version constraints, prefer repo's existing tooling
 
@@ -27,7 +27,7 @@ rules:
   - Must route based on user intent AND repo kind, not just one
   - Must never skip triage even if repo appears obvious
   - Must ask clarifying question if routing is ambiguous
-  - Must confirm version constraints before making changes
+  - Must confirm version constraints from project context before making changes
 
 output:
   type: analysis
