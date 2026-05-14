@@ -1,0 +1,64 @@
+name: wp-cpt-rest-feature
+description: Create or expose a WordPress Custom Post Type with relationships and REST API support using project conventions
+version: 1.0
+compatibility:
+  wordpress: project-defined
+  php: project-defined
+
+when_to_use:
+  - creating a Custom Post Type
+  - linking one CPT to another CPT
+  - exposing a CPT through WordPress REST API
+  - adding REST fields or custom endpoints for CPT data
+
+required_inputs:
+  - cpt_slug: machine name, e.g. rider_goods
+  - singular_label: human label for one item
+  - plural_label: human label for many items
+  - relationship_target: target post type when linking is required
+  - relationship_type: many-to-one | one-to-many | many-to-many
+  - rest_exposure: wp_v2 | custom_endpoint | none
+  - read_permission: public | logged_in | capability
+  - write_permission: none | logged_in | capability
+
+clarifying_questions:
+  - What should this item be called in the admin screen?
+  - Can anyone read this data through the API, or only logged-in users?
+  - Is each item linked to one target item or many target items?
+
+steps:
+  - Load project context and detect whether CPTs are registered manually, by Pods, by ACF, or by another system.
+  - Search for an existing CPT with the requested slug.
+  - Search for the relationship target post type.
+  - If the project uses Pods or another owner for CPT definitions, use that owner and do not manually register the CPT.
+  - Define fields and relationships only from user input or existing project conventions.
+  - Choose REST approach:
+      wp_v2: use show_in_rest, register_post_meta, register_rest_field, and core wp/v2 routes.
+      custom_endpoint: create a namespaced register_rest_route controller.
+      none: do not expose API.
+  - Add permission callbacks for every custom endpoint.
+  - Add schema, sanitization, and validation for API inputs.
+  - Add admin list/metabox behavior only when requested or required by project convention.
+  - Validate with syntax checks and route availability checks.
+
+rules:
+  - Must not invent fields.
+  - Must not invent relationship cardinality.
+  - Must not expose write endpoints unless explicitly requested.
+  - Must not make private data public by default.
+  - Must use the project owner for CPT definitions.
+  - Must use unique REST namespace for custom endpoints.
+  - Must include permission_callback for all custom REST routes.
+  - Must not read $_GET or $_POST directly in REST endpoints.
+  - Must preserve existing CPT registration style.
+
+output:
+  type: code
+  schema:
+    files_changed: string[]
+    cpt_slug: string
+    relationship: object
+    rest_routes: string[]
+    permissions: object
+    validation_steps: string[]
+    missing_inputs: string[]

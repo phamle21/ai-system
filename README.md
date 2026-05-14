@@ -8,6 +8,7 @@ Xây dựng một hệ thống AI có khả năng:
 * Hỗ trợ nhiều stack (WordPress, Laravel, frontend)
 * Giảm context usage bằng cách load đúng file cần thiết
 * Chuẩn hóa cách AI phân tích -> lập kế hoạch -> thực thi
+* Cho phép người không chuyên mô tả mục tiêu bằng ngôn ngữ tự nhiên
 * Dễ mở rộng (scale skill + project + workflow)
 
 ---
@@ -69,6 +70,7 @@ ai-system/
 ├── agents/
 │   └── router.yaml
 ├── pipelines/
+│   ├── intake-to-execute.yaml
 │   ├── build-feature.yaml
 │   ├── debug.yaml
 │   ├── review.yaml
@@ -81,6 +83,7 @@ ai-system/
 ├── rules/
 │   ├── ai-engineer-protocol.md
 │   ├── engineering-workflow.md
+│   ├── model-agnostic-execution.md
 │   └── wordpress-coding-standards.md
 ├── tools/
 │   ├── validate-ai-system.py
@@ -125,9 +128,52 @@ output:
 
 ---
 
-## 5. Agents (Orchestrator)
+## 5. Model-Agnostic Usage
 
-### 5.1 Router hiện có
+Mục tiêu: model yếu vẫn làm đúng bằng checklist, context, và câu hỏi thiếu thông tin.
+
+Luồng mặc định cho người không chuyên:
+
+```
+User goal
+  -> intake
+  -> ask missing questions if needed
+  -> analyze
+  -> route
+  -> plan/checklist
+  -> execute
+  -> validate
+  -> summarize
+```
+
+Người dùng có thể viết ngắn:
+
+```text
+Trong jrr, tạo CPT rider_goods liên kết với rider và xuất WordPress REST API.
+```
+
+Nếu thiếu thông tin, hệ thống phải hỏi tiếp, ví dụ:
+
+```text
+Need more information before implementation:
+1. In admin, should this be called "Rider Good" / "Rider Goods"?
+2. Does each item link to one rider or multiple riders?
+3. Should the API be public read-only, logged-in only, or editable?
+```
+
+Khi đủ thông tin, hệ thống tự chọn recipe. Với ví dụ trên:
+
+```text
+projects/jrr/skills/jrr-pods-cpt-rest-api
+```
+
+Không yêu cầu người dùng biết file path, hook, class name, hoặc REST internals nếu project có thể tự inspect.
+
+---
+
+## 6. Agents (Orchestrator)
+
+### 6.1 Router hiện có
 
 `agents/router.yaml` chọn pipeline và skill theo task, stack, và project overlay.
 
@@ -139,10 +185,11 @@ when:
 
 ---
 
-## 6. Pipeline (Workflow)
+## 7. Pipeline (Workflow)
 
 Pipelines hiện có:
 
+* `intake-to-execute`: intake -> analyze -> route -> plan -> execute -> validate -> summarize
 * `simple-fix`: analyze -> execute -> validate -> summarize
 * `build-feature`: analyze -> breakdown -> plan -> execute -> validate -> summarize
 * `debug`: analyze -> reproduce -> isolate -> execute -> validate -> summarize
@@ -164,7 +211,7 @@ steps:
 
 ---
 
-## 7. Project Context (đặt trong repo project)
+## 8. Project Context (đặt trong repo project)
 
 ```
 my-project/
@@ -199,10 +246,12 @@ rules:
 
 ---
 
-## 8. Cách hệ thống hoạt động
+## 9. Cách hệ thống hoạt động
 
 ```
 User Input
+   ↓
+Intake
    ↓
 Analyzer
    ↓
@@ -221,7 +270,7 @@ Output
 
 ---
 
-## 9. Token Optimization Strategy (CỰC QUAN TRỌNG)
+## 10. Context Optimization Strategy
 
 ### 9.1 Không load toàn bộ system
 

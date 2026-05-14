@@ -3,11 +3,13 @@ description: Route incoming request to correct agent, pipeline, and skills based
 version: 1.0
 
 rules:
+  - Must run skills/core/intake before analyze for user requests that may change code
   - Must parse intent before routing (create | fix | refactor | review | debug)
   - Must detect stack from context or project files before skill selection
   - Must load project routing overlay first when projects/[project]/routing.yaml exists
   - Must apply project allowed_skills and denied_skills before selecting domain skills
   - Must map task_type to correct pipeline:
+      non_expert_goal -> intake-to-execute
       simple_fix -> simple-fix
       feature -> build-feature
       bugfix  -> debug
@@ -18,6 +20,17 @@ rules:
   - Must log route decision for auditability
 
 routes:
+  # Default intake for plain-language implementation requests
+  - task: non-technical feature request
+    stack: any
+    pipeline: intake-to-execute
+    skills:
+      - skills/core/intake
+      - skills/core/analyze
+      - skills/core/plan
+      - skills/core/execute
+      - skills/core/summarize
+
   # WordPress – Plugin Development
   - task: create plugin
     stack: wordpress
@@ -109,7 +122,19 @@ routes:
       - skills/core/breakdown
       - skills/core/execute
 
-  # WordPress – CPT + API (NEW)
+  # WordPress – CPT + REST API
+  - task: create cpt rest feature
+    stack: wordpress
+    pipeline: intake-to-execute
+    skills:
+      - skills/core/intake
+      - skills/wordpress/cpt-rest-feature
+      - skills/wordpress/rest-api
+      - skills/core/analyze
+      - skills/core/plan
+      - skills/core/execute
+      - skills/core/summarize
+
   - task: create cpt
     stack: wordpress
     pipeline: build-feature

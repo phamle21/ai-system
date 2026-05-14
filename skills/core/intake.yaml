@@ -1,0 +1,48 @@
+name: intake
+description: Convert non-technical user goals into actionable implementation inputs and ask for missing information
+version: 1.0
+
+when_to_use:
+  - before analyze for every user request that may change code
+  - when the request is written in plain language
+  - when project, target, permissions, data model, or expected behavior is unclear
+  - before selecting a recipe or pipeline
+
+input:
+  - request: user request in natural language
+  - project_root: current project root or workspace root
+  - known_context: loaded project context, if any
+
+steps:
+  - Identify project name or infer it from current working directory and open files.
+  - Identify intent: create, change, fix, review, debug, document, or operate.
+  - Identify target entity: CPT, model, page, endpoint, shortcode, component, command, or unknown.
+  - Extract expected behavior in user language.
+  - Extract required data model inputs.
+  - Extract visibility and permission requirements.
+  - Check whether missing inputs can be discovered from project files.
+  - If required inputs are missing, output clarification questions and stop.
+  - If inputs are sufficient, output normalized task inputs for analyze/router.
+
+rules:
+  - Must not choose a skill before required inputs are satisfied.
+  - Must ask only missing questions.
+  - Must ask at most 3 questions per round.
+  - Must phrase questions for non-technical users.
+  - Must not ask for file paths if the project can be inspected.
+  - Must not invent fields, relationships, permissions, or public API behavior.
+  - Must state assumptions only when they are project conventions and low risk.
+
+output:
+  type: analysis
+  schema:
+    ready: boolean
+    project: string
+    intent: create | change | fix | review | debug | document | operate | unknown
+    target_type: string
+    target_name: string
+    expected_behavior: string
+    normalized_inputs: object
+    missing_inputs: string[]
+    questions: string[]
+    warnings: string[]

@@ -1,0 +1,31 @@
+name: intake-to-execute
+description: Default model-agnostic pipeline for non-technical feature requests
+version: 1.0
+
+steps:
+  - intake: normalize the user goal and ask for missing required inputs
+  - analyze: classify task, detect stack, identify scope
+  - route: apply project overlay, allowlist, denylist, and recipe matching
+  - plan: build a checklist from the selected recipe or skill
+  - execute: apply the checklist in dependency order
+  - validate: run focused project checks
+  - summarize: report changes, validation, and unresolved risks
+
+rules:
+  - Must stop after intake if required inputs are missing.
+  - Must not route to a denied skill unless a project overlay explicitly allows an exception.
+  - Must prefer project-specific recipes over generic stack skills.
+  - Must use simple language for clarification questions.
+  - Must not require non-technical users to provide implementation details that can be discovered locally.
+
+output:
+  type: text
+  schema:
+    ready: boolean
+    selected_project: string
+    selected_recipe: string
+    selected_pipeline: string
+    questions: string[]
+    files_changed: string[]
+    validations: string[]
+    warnings: string[]

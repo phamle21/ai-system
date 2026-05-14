@@ -1,0 +1,71 @@
+name: jrr-pods-cpt-rest-api
+description: JRR recipe for creating a Pods-owned CPT, linking it to another Pods CPT, and exposing WordPress REST API data safely
+version: 1.0
+
+when_to_use:
+  - creating a new JRR CPT such as rider_goods
+  - linking a new CPT to rider, race, venue, standing, organizer, or another JRR CPT
+  - exposing JRR CPT data through WordPress REST API when explicitly requested
+
+required_inputs:
+  - cpt_slug: e.g. rider_goods
+  - singular_label: e.g. Rider Good
+  - plural_label: e.g. Rider Goods
+  - related_cpt: e.g. rider
+  - relation_type: many-to-one | one-to-many | many-to-many
+  - rest_read: public | logged_in | capability
+  - rest_write: none | logged_in | capability
+  - fields: list of fields, or "title only"
+
+safe_defaults:
+  relation_type: many-to-one
+  rest_read: public
+  rest_write: none
+  fields: title only
+  rest_approach: wp_v2_with_registered_meta
+
+clarifying_questions:
+  - In admin, what should the singular and plural labels be?
+  - Does each item link to one rider or multiple riders?
+  - Should the REST API be public read-only, logged-in only, or editable?
+
+steps:
+  - Load jrr/.ai/context.yaml, jrr/.ai/architecture.md, jrr/.ai/rules.md, and jrr/.ai/notes.md.
+  - Load projects/jrr/conventions.yaml.
+  - Inspect pods-bootstrap/pods-config for existing CPT and field naming patterns.
+  - Confirm the requested cpt_slug does not already exist in Pods config or code.
+  - Confirm related_cpt exists in JRR context or Pods config.
+  - Create or update Pods configuration for the CPT only if the project stores Pods config in repo.
+  - Add relation field in Pods config using existing relationship field conventions.
+  - Add jrr-core extension code only for behavior not handled by Pods config.
+  - For REST read exposure, prefer WordPress core REST routes with show_in_rest and registered meta/fields.
+  - For custom response shaping, add a JRR REST controller only when core wp/v2 output is insufficient.
+  - Add permission callbacks for custom routes.
+  - Add schema and sanitization for custom REST inputs.
+  - Add documentation of endpoint path, permission, and sample response shape.
+  - Validate PHP syntax for changed PHP files.
+  - Validate REST route availability with WP-CLI or document the manual check if WP-CLI is unavailable.
+
+rules:
+  - Pods owns CPT and taxonomy definitions for JRR.
+  - Do not manually register the CPT in jrr-core when Pods config is the project owner.
+  - Do not use REST API for JRR interactive frontend behavior unless the task explicitly asks for REST API.
+  - REST API exposure is allowed for this recipe because the user explicitly requested it.
+  - Do not create write endpoints unless rest_write is explicitly not none.
+  - Do not expose private fields publicly by default.
+  - Use jrr_ prefix for custom meta keys when project-owned.
+  - Preserve backward compatibility with existing data.
+  - Keep changes limited to Pods config, jrr-core extensions, docs, and tests/checks required by this feature.
+
+output:
+  type: code
+  schema:
+    files_changed: string[]
+    pods_config_changed: string[]
+    jrr_core_files_changed: string[]
+    cpt_slug: string
+    relation_field: string
+    rest_routes: string[]
+    permissions: object
+    validation_steps: string[]
+    questions_if_blocked: string[]

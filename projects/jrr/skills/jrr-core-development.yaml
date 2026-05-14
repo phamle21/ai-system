@@ -7,6 +7,7 @@ when_to_use:
   - adding or changing JRR shortcodes
   - adding or changing JRR AJAX handlers
   - working with Pods-backed CPTs, taxonomies, or metadata
+  - coordinating with projects/jrr/skills/jrr-pods-cpt-rest-api for CPT plus REST API work
   - editing JRR shortcode assets, views, SCSS, or jQuery modules
 
 input:
@@ -28,6 +29,7 @@ rules:
   - Must not change core business logic unless explicitly required by the issue.
   - Must not redefine Pods CPTs or taxonomies in jrr-core.
   - Must not use REST API as the default transport for JRR interactive features.
+  - REST API may be used when the user explicitly asks to expose WordPress REST API data.
   - Must not use Gutenberg/block-theme/interactivity skills for JRR work.
   - Must preserve existing module structure and naming.
   - Must keep changes surgical and scoped to the requested issue.

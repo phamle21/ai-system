@@ -22,9 +22,11 @@ context_files:
   global:
     - ai-system/rules/ai-engineer-protocol.md
     - ai-system/rules/engineering-workflow.md
+    - ai-system/rules/model-agnostic-execution.md
     - ai-system/rules/wordpress-coding-standards.md
 
 allowed_skills:
+  - skills/core/intake
   - skills/core/analyze
   - skills/core/analyze-overview
   - skills/core/breakdown
@@ -33,16 +35,18 @@ allowed_skills:
   - skills/core/debug
   - skills/core/summarize
   - skills/core/spec-manager
+  - skills/wordpress/cpt-rest-feature
   - skills/wordpress/mu-plugin-development
+  - skills/wordpress/rest-api
   - skills/wordpress/wp-ajax
   - skills/wordpress/wpcli-and-ops
   - projects/jrr/skills/jrr-core-development
+  - projects/jrr/skills/jrr-pods-cpt-rest-api
 
 denied_skills:
   - skills/wordpress/block-development
   - skills/wordpress/block-themes
   - skills/wordpress/interactivity-api
-  - skills/wordpress/rest-api
   - skills/wordpress/abilities-api
   - skills/wordpress/playground
   - skills/wordpress/wpds
@@ -52,6 +56,8 @@ routing_rules:
   - Use project context before global defaults.
   - Route shortcode, AJAX, Pods, and Elementor-related mu-plugin work through projects/jrr/skills/jrr-core-development.
   - Do not route JRR feature work to REST API, Gutenberg block, block theme, or Interactivity API skills.
+  - REST API is denied by default for interactive frontend behavior, but allowed when the user explicitly asks to expose WordPress REST API data.
+  - For JRR CPT plus REST API requests, route to projects/jrr/skills/jrr-pods-cpt-rest-api before generic WordPress CPT skills.
   - Respect existing Pods configuration under pods-bootstrap before adding or changing data fields.
   - Preserve existing business logic unless the issue explicitly requires changing it.
 

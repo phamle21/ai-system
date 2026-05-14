@@ -8,6 +8,7 @@ input:
   - context: { name, stack[], modules[], rules{} }
 
 steps:
+  - Consume intake output when available
   - Parse user request for intent keywords (create, fix, refactor, add, remove)
   - Detect tech stack from project context or project_root files
   - Identify target modules affected
@@ -16,6 +17,8 @@ steps:
   - Output structured analysis
 
 rules:
+  - Must not proceed to implementation if intake.ready is false
+  - Must preserve intake.missing_inputs and intake.questions in analysis output
   - Must detect stack from composer.json, package.json, wp-config.php, or context
   - Must classify task type before proceeding
   - Must list affected modules explicitly
@@ -31,4 +34,6 @@ output:
     modules: string[]
     complexity: low | medium | high
     confidence: 0.0-1.0
+    missing_inputs: string[]
+    questions: string[]
     warnings: string[]
