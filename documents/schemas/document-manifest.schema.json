@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Document Manifest",
+  "type": "object",
+  "required": ["documents"],
+  "properties": {
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "template"],
+        "properties": {
+          "id": {"type": "string"},
+          "template": {"type": "string"},
+          "approval_gate": {"type": "string"}
+        }
+      }
+    }
+  }
+}

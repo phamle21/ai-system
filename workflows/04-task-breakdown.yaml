@@ -1,0 +1,19 @@
+id: 04-task-breakdown
+description: Convert consolidated lead plans into executable tasks.
+steps:
+  - id: task-breakdown
+    agent: tech-lead
+    input: BA, technical, QC, and design plans.
+    output: Task Breakdown
+    approval_gate: architecture
+    retry_policy: revise-after-human-feedback
+    next_step: task-plan-approval
+    failure_behavior: block-workflow
+  - id: task-plan-approval
+    agent: delivery-orchestrator
+    input: Task breakdown and execution safety rules.
+    output: Approved task plan
+    approval_gate:
+    retry_policy: revise-after-human-feedback
+    next_step: 05-task-execution
+    failure_behavior: block-workflow

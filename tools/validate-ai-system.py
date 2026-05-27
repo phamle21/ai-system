@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import sys
+import json
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,31 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 STRICT_DIRS = {"agents", "pipelines", "projects"}
+AGENT_REQUIRED = {
+    "id",
+    "name",
+    "role",
+    "goal",
+    "responsibilities",
+    "inputs",
+    "outputs",
+    "quality_gates",
+    "rules",
+    "handoff_targets",
+    "allowed_tools",
+    "approval_required",
+    "execution_policy",
+}
+WORKFLOW_STEP_REQUIRED = {
+    "id",
+    "agent",
+    "input",
+    "output",
+    "approval_gate",
+    "retry_policy",
+    "next_step",
+    "failure_behavior",
+}
 
 
 def load_yaml(path: Path) -> Any:
@@ -62,6 +88,11 @@ def main() -> int:
         for path in ROOT.rglob("*")
         if path.suffix in {".yaml", ".yml"} and ".git" not in path.parts
     )
+    json_files = sorted(
+        path
+        for path in ROOT.rglob("*.json")
+        if ".git" not in path.parts
+    )
 
     parsed: dict[Path, Any] = {}
     for path in yaml_files:
@@ -95,6 +126,32 @@ def main() -> int:
             if not pipeline_path.exists():
                 errors.append(f"Missing pipeline in {path.relative_to(ROOT)}: {pipeline}")
 
+        rel_parts = path.relative_to(ROOT).parts
+        if len(rel_parts) >= 3 and rel_parts[0] == "agents" and rel_parts[1] in {"executive", "leads", "workers"}:
+            missing = sorted(AGENT_REQUIRED - set(data))
+            if missing:
+                errors.append(f"Agent spec missing fields in {path.relative_to(ROOT)}: {', '.join(missing)}")
+
+        if len(rel_parts) >= 2 and rel_parts[0] == "workflows":
+            if "id" not in data or "description" not in data or "steps" not in data:
+                errors.append(f"Workflow missing id/description/steps: {path.relative_to(ROOT)}")
+            for index, step in enumerate(data.get("steps", []), start=1):
+                if not isinstance(step, dict):
+                    errors.append(f"Workflow step must be a mapping: {path.relative_to(ROOT)} step {index}")
+                    continue
+                missing = sorted(WORKFLOW_STEP_REQUIRED - set(step))
+                if missing:
+                    errors.append(
+                        f"Workflow step missing fields in {path.relative_to(ROOT)} step {index}: {', '.join(missing)}"
+                    )
+
+    for path in json_files:
+        try:
+            with path.open("r", encoding="utf-8") as handle:
+                json.load(handle)
+        except Exception as exc:
+            errors.append(f"JSON parse failed: {path.relative_to(ROOT)}: {exc}")
+
     if errors:
         print("ai-system validation failed:")
         for error in errors:
@@ -106,7 +163,7 @@ def main() -> int:
         for warning in warnings:
             print(f"- {warning}")
 
-    print(f"ai-system validation passed ({len(yaml_files)} YAML files)")
+    print(f"ai-system validation passed ({len(yaml_files)} YAML files, {len(json_files)} JSON files)")
     return 0
 
 

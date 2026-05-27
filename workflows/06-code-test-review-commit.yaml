@@ -1,0 +1,27 @@
+id: 06-code-test-review-commit
+description: Review, approve, and prepare task changes for commit.
+steps:
+  - id: review
+    agent: reviewer-worker
+    input: Diff, test results, requirements, and architecture.
+    output: Review Report
+    approval_gate:
+    retry_policy: revise-until-no-blockers
+    next_step: review-approval
+    failure_behavior: block-commit
+  - id: review-approval
+    agent: delivery-orchestrator
+    input: Review report and diff summary.
+    output: Commit approval packet
+    approval_gate:
+    retry_policy: revise-after-human-feedback
+    next_step: commit
+    failure_behavior: block-commit
+  - id: commit
+    agent: delivery-orchestrator
+    input: Approved review and task metadata.
+    output: Commit Log
+    approval_gate: review
+    retry_policy: manual-resolution
+    next_step:
+    failure_behavior: persist-commit-blocker

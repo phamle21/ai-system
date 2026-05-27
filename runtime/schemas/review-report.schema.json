@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Review Report",
+  "type": "object",
+  "required": ["task_id", "status", "findings"],
+  "properties": {
+    "task_id": {"type": "string"},
+    "status": {"type": "string"},
+    "findings": {"type": "array", "items": {"type": "object"}},
+    "test_evidence": {"type": "array", "items": {"type": "string"}},
+    "recommendation": {"type": "string"}
+  },
+  "additionalProperties": true
+}
+

@@ -1,0 +1,27 @@
+id: 01-intake-to-docs
+description: Convert requirement input into product requirement documents.
+steps:
+  - id: intake
+    agent: po-lead
+    input: Raw requirement and project context.
+    output: requirement-intake
+    approval_gate:
+    retry_policy: revise-on-missing-context
+    next_step: brd
+    failure_behavior: stop-and-request-clarification
+  - id: brd
+    agent: po-lead
+    input: Requirement intake.
+    output: BRD
+    approval_gate:
+    retry_policy: one-revision
+    next_step: srd-frd
+    failure_behavior: persist-draft
+  - id: srd-frd
+    agent: po-lead
+    input: BRD and project context.
+    output: SRD and FRD
+    approval_gate:
+    retry_policy: revise-after-human-feedback
+    next_step: 02-solution-architecture
+    failure_behavior: block-workflow

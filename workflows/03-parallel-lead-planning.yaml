@@ -1,0 +1,36 @@
+id: 03-parallel-lead-planning
+description: Run BA, technical, QC, and design planning in parallel after architecture approval.
+steps:
+  - id: ba-planning
+    agent: ba-lead
+    input: Approved requirements and architecture.
+    output: Business analysis plan
+    approval_gate: architecture
+    retry_policy: revise-on-conflict
+    next_step: consolidate-plans
+    failure_behavior: persist-issue
+  - id: technical-planning
+    agent: tech-lead
+    input: Approved architecture and project context.
+    output: Technical Design
+    approval_gate: architecture
+    retry_policy: revise-on-conflict
+    next_step: consolidate-plans
+    failure_behavior: persist-issue
+  - id: qc-planning
+    agent: qc-lead
+    input: Requirements and technical design.
+    output: Test Plan
+    approval_gate: architecture
+    retry_policy: revise-on-conflict
+    next_step: consolidate-plans
+    failure_behavior: persist-issue
+  - id: design-planning
+    agent: design-lead
+    input: Requirements and UI context.
+    output: Design Plan
+    approval_gate: architecture
+    retry_policy: revise-on-conflict
+    next_step: consolidate-plans
+    failure_behavior: persist-issue
+

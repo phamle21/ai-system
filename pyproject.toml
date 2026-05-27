@@ -1,0 +1,11 @@
+[project]
+name = "ai-delivery-system"
+version = "0.1.0"
+description = "Multi-project AI Delivery Operating System MVP"
+requires-python = ">=3.10"
+dependencies = [
+  "PyYAML>=6.0"
+]
+
+[project.scripts]
+ai-system = "cli.main:main"

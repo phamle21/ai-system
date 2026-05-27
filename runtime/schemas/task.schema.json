@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Task",
+  "type": "object",
+  "required": ["id", "title", "status", "approval_gate"],
+  "properties": {
+    "id": {"type": "string"},
+    "title": {"type": "string"},
+    "type": {"type": "string"},
+    "status": {"type": "string"},
+    "depends_on": {"type": "array", "items": {"type": "string"}},
+    "allowed_files": {"type": "array", "items": {"type": "string"}},
+    "approval_gate": {"type": "string"}
+  },
+  "additionalProperties": true
+}
+

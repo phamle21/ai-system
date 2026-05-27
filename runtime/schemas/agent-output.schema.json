@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agent Output",
+  "type": "object",
+  "required": ["agent_id", "output_type", "content", "created_at"],
+  "properties": {
+    "agent_id": {"type": "string"},
+    "output_type": {"type": "string"},
+    "content": {"type": "string"},
+    "metadata": {"type": "object"},
+    "created_at": {"type": "string"}
+  },
+  "additionalProperties": false
+}
+

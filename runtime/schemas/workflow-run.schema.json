@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workflow Run",
+  "type": "object",
+  "required": ["id", "workflow_id", "project", "status", "steps"],
+  "properties": {
+    "id": {"type": "string"},
+    "workflow_id": {"type": "string"},
+    "project": {"type": "string"},
+    "status": {"type": "string"},
+    "dry_run": {"type": "boolean"},
+    "steps": {"type": "array", "items": {"type": "object"}},
+    "blocked_gate": {"type": "string"},
+    "started_at": {"type": "string"},
+    "finished_at": {"type": "string"}
+  },
+  "additionalProperties": true
+}
+

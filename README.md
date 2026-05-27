@@ -1,443 +1,201 @@
-# AI SYSTEM ARCHITECTURE - MULTI PROJECT
+# AI Delivery Operating System
 
-## 1. Mục tiêu hệ thống
+`ai-system` is a runnable MVP for a multi-project AI software delivery operating system. It is designed for Codex/Devin-style workflows where requirements become documents, architecture, parallel lead plans, executable tasks, reviews, and commit-ready delivery logs.
 
-Xây dựng một hệ thống AI có khả năng:
+The MVP runs without real AI APIs. It uses deterministic mock providers, YAML agent specs, YAML workflows, Markdown document templates, JSON runtime state, and approval gates.
 
-* Tái sử dụng cho nhiều dự án (multi-project)
-* Hỗ trợ nhiều stack (WordPress, Laravel, frontend)
-* Giảm context usage bằng cách load đúng file cần thiết
-* Chuẩn hóa cách AI phân tích -> lập kế hoạch -> thực thi
-* Cho phép người không chuyên mô tả mục tiêu bằng ngôn ngữ tự nhiên
-* Dễ mở rộng (scale skill + project + workflow)
+## Architecture
 
----
-
-## 2. Nguyên tắc thiết kế cốt lõi
-
-### 2.1 Separation of Concerns
-
-* Skill: biết làm gì
-* Agent: điều phối
-* Project: context riêng
-* Pipeline: flow thực thi
-
-Không trộn các layer.
-
----
-
-### 2.2 Reusability First
-
-* Skill phải generic
-* Không hardcode project logic
-
----
-
-### 2.3 Context Injection
-
-* AI không “tự biết project”
-* Luôn inject context trước khi chạy
-
----
-
-### 2.4 Context Optimization
-
-* Không load toàn bộ system
-* Chỉ load:
-
-  * skill cần thiết
-  * context rút gọn
-  * pipeline liên quan
-
----
-
-## 3. Cấu trúc thư mục hiện tại
-
-```
+```text
 ai-system/
-├── skills/
-│   ├── core/
-│   │   ├── analyze.yaml
-│   │   ├── breakdown.yaml
-│   │   ├── plan.yaml
-│   │   ├── execute.yaml
-│   │   ├── debug.yaml
-│   │   └── summarize.yaml
-│   ├── wordpress/
-│   ├── laravel/
-│   ├── frontend/
-│   └── testing/
 ├── agents/
-│   └── router.yaml
-├── pipelines/
-│   ├── intake-to-execute.yaml
-│   ├── build-feature.yaml
-│   ├── debug.yaml
-│   ├── review.yaml
-│   └── simple-fix.yaml
-├── templates/
-│   ├── wordpress/
-│   └── shared/
+│   ├── executive/
+│   ├── leads/
+│   └── workers/
+├── workflows/
+├── documents/
+│   ├── templates/
+│   └── schemas/
+├── runtime/
+│   ├── approvals/
+│   ├── runs/
+│   ├── memory/
+│   └── schemas/
+├── providers/
+│   ├── base/
+│   ├── mock/
+│   ├── openai/
+│   ├── codex/
+│   └── local/
+├── cli/
 ├── projects/
-│   └── jrr/
-├── rules/
-│   ├── ai-engineer-protocol.md
-│   ├── engineering-workflow.md
-│   ├── model-agnostic-execution.md
-│   └── wordpress-coding-standards.md
 ├── tools/
-│   ├── validate-ai-system.py
-│   └── validate-ai-system.sh
-└── README.md
+├── skills/
+└── rules/
 ```
 
----
-
-## 4. Định nghĩa chuẩn cho Skill
-
-### Format YAML
-
-```yaml
-name: skill-name
-description: What this skill does
-
-input:
-  - field_1
-  - field_2
-
-steps:
-  - step_1
-  - step_2
-
-rules:
-  - must follow X
-  - must avoid Y
-
-output:
-  type: code | text | analysis
-```
-
----
-
-### Nguyên tắc viết skill
-
-* 1 skill = 1 nhiệm vụ rõ ràng
-* Không dài quá 150–300 dòng
-* Không chứa context project; project-specific logic belongs in `projects/[project]/`
-* Có rule rõ ràng (rất quan trọng)
-
----
-
-## 5. Model-Agnostic Usage
-
-Mục tiêu: model yếu vẫn làm đúng bằng checklist, context, và câu hỏi thiếu thông tin.
-
-Luồng mặc định cho người không chuyên:
-
-```
-User goal
-  -> intake
-  -> ask missing questions if needed
-  -> analyze
-  -> route
-  -> plan/checklist
-  -> execute
-  -> validate
-  -> summarize
-```
-
-Người dùng có thể viết ngắn:
+## Delivery Flow
 
 ```text
-Trong jrr, tạo CPT rider_goods liên kết với rider và xuất WordPress REST API.
+Requirement
+→ PO Analysis
+→ BRD / SRD / FRD
+→ Solution Architecture
+→ BA / Tech / QC / Design planning
+→ Task Breakdown
+→ Worker Execution
+→ Code / Test / Review / Commit
 ```
 
-Nếu thiếu thông tin, hệ thống phải hỏi tiếp, ví dụ:
+## Agents
+
+Executive agents:
+
+- `po-lead`
+- `solution-architect`
+- `delivery-orchestrator`
+
+Lead agents:
+
+- `ba-lead`
+- `tech-lead`
+- `qc-lead`
+- `design-lead`
+
+Worker agents:
+
+- `backend-worker`
+- `frontend-worker`
+- `tester-worker`
+- `reviewer-worker`
+- `devops-worker`
+
+Each agent is declared in YAML with role, goal, inputs, outputs, quality gates, rules, handoff targets, allowed tools, approval requirements, and execution policy.
+
+## Workflows
+
+- `01-intake-to-docs`
+- `02-solution-architecture`
+- `03-parallel-lead-planning`
+- `04-task-breakdown`
+- `05-task-execution`
+- `06-code-test-review-commit`
+
+Workflow files define ordered steps with agent assignment, input, output, approval gate, retry policy, next step, and failure behavior.
+
+## Multi-Project Support
+
+Each managed project gets isolated runtime data:
 
 ```text
-Need more information before implementation:
-1. In admin, should this be called "Rider Good" / "Rider Goods"?
-2. Does each item link to one rider or multiple riders?
-3. Should the API be public read-only, logged-in only, or editable?
+.ai-system/
+├── project.yaml
+├── state.json
+├── approvals/
+├── runs/
+├── memory/
+├── tasks/
+└── docs/
 ```
 
-Khi đủ thông tin, hệ thống tự chọn recipe. Với ví dụ trên:
+The global registry lives at:
 
 ```text
-projects/jrr/skills/jrr-pods-cpt-rest-api
+~/.ai-system/projects.json
 ```
 
-Không yêu cầu người dùng biết file path, hook, class name, hoặc REST internals nếu project có thể tự inspect.
+Set `AI_SYSTEM_REGISTRY=/path/to/projects.json` for tests or isolated environments.
 
----
+## CLI Usage
 
-## 6. Agents (Orchestrator)
+Run from this repository:
 
-### 6.1 Router hiện có
-
-`agents/router.yaml` chọn pipeline và skill theo task, stack, và project overlay.
-
-```yaml
-when:
-  - task: create plugin
-    use: wordpress/plugin/create
+```bash
+python3 -m cli init-project --name DemoShop --path /example/projects/demo-shop --type web
+python3 -m cli register-project --name DemoShop --path /example/projects/demo-shop --type web
+python3 -m cli use-project DemoShop
+python3 -m cli list-projects
+python3 -m cli project-status
 ```
 
----
+Run delivery workflows:
 
-## 7. Pipeline (Workflow)
-
-Pipelines hiện có:
-
-* `intake-to-execute`: intake -> analyze -> route -> plan -> execute -> validate -> summarize
-* `simple-fix`: analyze -> execute -> validate -> summarize
-* `build-feature`: analyze -> breakdown -> plan -> execute -> validate -> summarize
-* `debug`: analyze -> reproduce -> isolate -> execute -> validate -> summarize
-* `review`: analyze -> inspect -> findings -> summarize
-
-Ví dụ `build-feature`:
-
-```yaml
-name: build-feature
-
-steps:
-  - analyze
-  - breakdown
-  - plan
-  - execute
-  - validate
-  - summarize
+```bash
+python3 -m cli intake --file req.md
+python3 -m cli run-workflow 02-solution-architecture
+python3 -m cli approve --gate requirements
+python3 -m cli approve --gate architecture
+python3 -m cli approve --gate task-plan
+python3 -m cli run-task TASK-001
+python3 -m cli review-task TASK-001
+python3 -m cli approve --gate review
+python3 -m cli commit-task TASK-001
 ```
 
----
+Use dry-run mode:
 
-## 8. Project Context (đặt trong repo project)
-
-```
-my-project/
-├── .ai/
-│   ├── context.yaml
-│   ├── architecture.md
-│   ├── modules.yaml
-│   └── rules.md
+```bash
+python3 -m cli --dry-run run-workflow 01-intake-to-docs
+python3 -m cli --dry-run run-task TASK-001
 ```
 
----
+## Runtime Safety
 
-### context.yaml
+The MVP enforces these delivery controls:
 
-```yaml
-name: ecommerce-system
+- Task execution is blocked until `task-plan` approval exists.
+- Workflow steps with approval gates stop when the gate is not approved.
+- Task execution creates or checks an AI working branch when the target project is a Git repo.
+- Configured tests run before task execution is marked complete.
+- Diff summaries and execution logs are persisted.
+- Review is required before commit intent is recorded when `review_required` is enabled.
 
-stack:
-  - laravel
-  - mysql
-  - redis
+## Provider Layer
 
-modules:
-  - auth
-  - product
-  - order
+Providers are isolated behind a clean interface:
 
-rules:
-  api: rest
-  auth: jwt
+- `providers/base` defines `Provider`, `ProviderRequest`, and `ProviderResponse`.
+- `providers/mock` is the deterministic MVP provider.
+- `providers/openai`, `providers/codex`, and `providers/local` are placeholders for future integrations.
+
+No workflow hardcodes a real provider.
+
+## Documents
+
+Markdown templates exist for:
+
+- BRD
+- SRD
+- FRD
+- Solution Architecture
+- Technical Design
+- Database Design
+- API Design
+- Test Plan
+- Test Cases
+- Task Breakdown
+- Review Report
+- Deployment Plan
+- Decision Log
+- Assumptions Log
+
+## Validation
+
+Validate YAML structure and internal references:
+
+```bash
+python3 tools/validate-ai-system.py
+python3 -m compileall cli runtime providers
 ```
 
----
-
-## 9. Cách hệ thống hoạt động
-
-```
-User Input
-   ↓
-Intake
-   ↓
-Analyzer
-   ↓
-Router
-   ↓
-Load Project Context
-   ↓
-Planner
-   ↓
-Executor (call skill)
-   ↓
-Reviewer
-   ↓
-Output
-```
-
----
-
-## 10. Context Optimization Strategy
-
-### 9.1 Không load toàn bộ system
-
-Chỉ load:
-
-* 1–2 skill liên quan
-* context rút gọn
-* pipeline hiện tại
-
----
-
-### 9.2 Context Compression
-
-Thay vì:
-
-```yaml
-modules:
-  - auth
-  - product
-  - order
-  - payment
-  - shipping
-```
-
-→ rút gọn:
-
-```yaml
-modules: [auth, product, order]
-```
-
----
-
-### 9.3 Skill Granularity
-
-❌ Sai:
-
-* 1 skill làm tất cả
-
-✅ Đúng:
-
-* chia nhỏ skill
-
----
-
-### 9.4 Template-driven
-
-* hạn chế generate từ đầu
-* dùng template để giảm token
-
----
-
-## 10. Git Ignore (QUAN TRỌNG)
-
-### Nên ignore:
-
-```
-# cache
-.cache/
-.tmp/
-
-# logs
-logs/
-*.log
-
-# runtime
-dist/
-build/
-
-# local config
-.env
-.env.local
-
-# AI generated temp
-.generated/
-.ai-cache/
-.ai-output/
-
-# OS
-.DS_Store
-Thumbs.db
-```
-
----
-
-### Không nên ignore:
-
-* skills/
-* agents/
-* pipelines/
-* templates/
-* rules/
-
-👉 vì đây là “core knowledge”
-
----
-
-## 11. Versioning Strategy
-
-* version skill riêng
-* không phụ thuộc project
-
-Ví dụ:
-
-```
-skills/wp-plugin/create@v1.yaml
-skills/wp-plugin/create@v2.yaml
-```
-
----
-
-## 12. Mở rộng trong tương lai
-
-Bạn có thể thêm:
-
-### 12.1 AI Memory Layer
-
-* lưu history
-* reuse decision
-
----
-
-### 12.2 Auto Learning
-
-* log task → refine skill
-
----
-
-### 12.3 CI/CD Integration
-
-* auto validate code
-* auto deploy
-
----
-
-### 12.4 Multi-agent parallel
-
-* chạy nhiều agent cùng lúc
-
----
-
-## 13. Checklist hoàn chỉnh
-
-* [ ] Skill tách biệt
-* [ ] Có router
-* [ ] Có pipeline
-* [ ] Có context project
-* [ ] Có validation
-* [ ] Có template
-* [ ] Có token optimization
-
----
-
-## 14. Kết luận
-
-Hệ thống này giúp bạn:
-
-* Tái sử dụng AI cho mọi project
-* Giảm prompt thủ công
-* Tăng consistency code
-* Scale team/dev dễ dàng
-
----
-
-## 15. Công thức tổng
-
-```
-Skill + Context + Agent + Pipeline = AI Dev System
-```
-
----
+## Roadmap
+
+- Add package entrypoint for the `ai-system` command.
+- Add JSON Schema validation in the CLI runtime.
+- Add richer document rendering from templates and workflow context.
+- Add OpenAI provider implementation.
+- Add Codex provider execution bridge.
+- Add local LLM provider adapters.
+- Add task allowed-file enforcement from task schema.
+- Add Git commit implementation with signed review metadata.
+- Add human approval UI or chat integration.

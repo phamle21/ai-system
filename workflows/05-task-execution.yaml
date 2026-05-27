@@ -1,0 +1,28 @@
+id: 05-task-execution
+description: Execute approved task plans with branch, test, diff, and logs.
+steps:
+  - id: execute-backend
+    agent: backend-worker
+    input: Approved backend task.
+    output: Execution Log
+    approval_gate: task-plan
+    retry_policy: retry-after-fix-plan
+    next_step: test-task
+    failure_behavior: stop-and-log
+  - id: execute-frontend
+    agent: frontend-worker
+    input: Approved frontend task.
+    output: Execution Log
+    approval_gate: task-plan
+    retry_policy: retry-after-fix-plan
+    next_step: test-task
+    failure_behavior: stop-and-log
+  - id: test-task
+    agent: tester-worker
+    input: Code changes and test plan.
+    output: Test Results
+    approval_gate:
+    retry_policy: retry-on-transient-failure
+    next_step: 06-code-test-review-commit
+    failure_behavior: block-review
+

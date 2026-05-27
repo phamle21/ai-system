@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Project State",
+  "type": "object",
+  "required": ["tasks", "approvals", "runs"],
+  "properties": {
+    "tasks": {"type": "object"},
+    "approvals": {"type": "object"},
+    "runs": {"type": "array", "items": {"type": "object"}},
+    "active_workflow": {"type": ["string", "null"]}
+  },
+  "additionalProperties": true
+}
+

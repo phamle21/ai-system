@@ -1,0 +1,19 @@
+id: 02-solution-architecture
+description: Produce architecture and decision records from approved requirements.
+steps:
+  - id: solution-architecture
+    agent: solution-architect
+    input: Approved BRD, SRD, FRD, and project memory.
+    output: Solution Architecture
+    approval_gate: requirements
+    retry_policy: revise-after-human-feedback
+    next_step: architecture-approval
+    failure_behavior: block-workflow
+  - id: architecture-approval
+    agent: delivery-orchestrator
+    input: Solution Architecture.
+    output: Architecture approval packet
+    approval_gate:
+    retry_policy: one-revision
+    next_step: 03-parallel-lead-planning
+    failure_behavior: block-workflow
