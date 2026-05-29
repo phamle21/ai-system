@@ -4,6 +4,7 @@ version: 1.0
 
 steps:
   - analyze: identify scope, stack, and review criteria
+  - targeted_review: if user names a specific area or asks whether feedback must be fixed, apply skills/core/targeted-code-review
   - inspect: read relevant code, diffs, rules, and tests
   - findings: list defects, risks, missing tests, and open questions
   - summarize: provide concise review result
@@ -13,6 +14,7 @@ rules:
   - Must include file and line references when possible.
   - Must prioritize bugs, regressions, security, and missing validation.
   - Must not modify code unless the user explicitly asks for fixes.
+  - For targeted reviews, classify each issue as must_fix_now, can_defer, or no_action.
 
 output:
   type: text

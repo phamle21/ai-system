@@ -67,6 +67,13 @@ routes:
       - skills/wordpress/plugin-directory-guidelines
       - skills/core/analyze
 
+  - task: targeted code review
+    stack: any
+    pipeline: review
+    skills:
+      - skills/core/targeted-code-review
+      - skills/core/analyze
+
   # WordPress – Block Development
   - task: create block
     stack: wordpress

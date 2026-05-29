@@ -1,0 +1,93 @@
+name: targeted-code-review
+description: Focused review for a named module, widget, endpoint, feedback item, or code path; determines what must be fixed now, what can be deferred, and what is acceptable as-is.
+version: 1.0
+
+when_to_use:
+  - user asks "kiểm tra phần ... xem cần sửa gì không"
+  - user asks whether feedback items can be ignored, deferred, or must be fixed
+  - user asks for review of a specific file, widget, endpoint, AJAX action, import/export flow, dashboard widget, shortcode, or admin feature
+  - before deciding whether to implement reviewer feedback
+
+goals:
+  - Identify concrete defects, security risks, regressions, performance risks, and missing validation.
+  - Separate must-fix issues from acceptable tradeoffs and follow-up work.
+  - Keep review scoped to the named area unless evidence shows a nearby dependency is required.
+
+context_loading:
+  - Load project-local context first when available.
+  - Search for the named feature using rg before opening files.
+  - Read the smallest relevant code path: registration, handler/render method, data source, permissions, templates/assets, and related tests if present.
+  - For WordPress features, include hooks, nonce/capability checks, escaping/sanitization, query shape, post status, meta/taxonomy assumptions, and public file exposure.
+  - Do not load unrelated modules just to be comprehensive.
+
+review_checklist:
+  correctness:
+    - Does the code fulfill the visible intent of the feature?
+    - Are query limits, ordering, filtering, grouping, and status selection consistent with the UI/business expectation?
+    - Are empty/error states handled without broken markup or fatal errors?
+    - Are legacy or missing data shapes handled safely?
+  security:
+    - Are mutating/admin endpoints protected by nonce and capability checks?
+    - Are REST permission callbacks explicit?
+    - Is untrusted input sanitized before use?
+    - Is output escaped according to context?
+    - Are generated/downloaded files protected when they may contain private/admin data?
+  performance:
+    - Are loops, queries, imports, exports, and dashboard widgets bounded enough for expected volume?
+    - Are batch/progress labels honest, or does one request still process everything?
+    - Are N+1 queries acceptable for the data size or worth fixing now?
+  maintainability:
+    - Does the change follow local patterns and naming?
+    - Is a helper or abstraction justified by repeated behavior?
+    - Are public APIs/backward compatibility preserved?
+  validation:
+    - Identify the fastest relevant validation command.
+    - Never claim validation passed unless it was run.
+
+severity:
+  high:
+    - Unauthorized mutation or data exposure.
+    - Likely timeout/data loss/broken primary flow for expected usage.
+    - Fatal error or broken admin/frontend output under common data.
+  medium:
+    - Stale data, incorrect partial display, broken markup in edge cases, missing escaping of imported/admin data, or realistic maintainability risk.
+  low:
+    - Cosmetic issue, minor inefficiency under small expected volume, naming mismatch, or improvement with no current user impact.
+
+decision_labels:
+  must_fix_now:
+    - Security issue with plausible exploit or private data exposure.
+    - Correctness bug in the requested/released scope.
+    - Small low-risk fix that prevents stale or broken UI.
+  can_defer:
+    - Valid concern but current volume or usage makes risk low.
+    - Requires larger UX/API/design change than the current scope.
+    - Needs product/role policy decision.
+  no_action:
+    - Code already handles the issue.
+    - Feedback is not applicable after inspecting source.
+    - Risk is theoretical and contradicted by current constraints.
+
+output_format:
+  findings:
+    - "[Severity] file:line Issue -> impact -> suggested fix"
+  decision:
+    must_fix_now:
+      - item
+    can_defer:
+      - item
+    no_action:
+      - item
+  good_points:
+    - item
+  validation:
+    - command/result or "not run" with reason
+  notes:
+    - residual risk or assumption that affects the decision
+
+rules:
+  - Findings lead the response for review-only requests.
+  - Use exact file and line references when possible.
+  - Do not modify code unless the user explicitly asks to fix it.
+  - If the user asks "có cần làm không", answer with must_fix_now/can_defer/no_action, not a generic review.
+  - If the user later says "sửa đi", implement only must_fix_now items unless they specify broader scope.

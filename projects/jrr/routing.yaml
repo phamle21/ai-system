@@ -35,6 +35,7 @@ allowed_skills:
   - skills/core/debug
   - skills/core/summarize
   - skills/core/spec-manager
+  - skills/core/targeted-code-review
   - skills/wordpress/cpt-rest-feature
   - skills/wordpress/mu-plugin-development
   - skills/wordpress/rest-api
