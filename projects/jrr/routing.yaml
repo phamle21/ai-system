@@ -36,6 +36,8 @@ allowed_skills:
   - skills/core/summarize
   - skills/core/spec-manager
   - skills/core/targeted-code-review
+  - skills/core/vibecode
+  - skills/testing/qa-test-cases
   - skills/wordpress/cpt-rest-feature
   - skills/wordpress/mu-plugin-development
   - skills/wordpress/rest-api
@@ -61,6 +63,8 @@ routing_rules:
   - For JRR CPT plus REST API requests, route to projects/jrr/skills/jrr-pods-cpt-rest-api before generic WordPress CPT skills.
   - Respect existing Pods configuration under pods-bootstrap before adding or changing data fields.
   - Preserve existing business logic unless the issue explicitly requires changing it.
+  - Route QA / test-case work (specs .../tasks/QA-*) through skills/testing/qa-test-cases; align IDs with JRR specs conventions (specs/Rules.md) and cover Actor x Surface (admin save, CSV import, race/standing lookup, frontend display).
+  - Apply skills/core/vibecode discipline on all jrr-core code changes; verify (lint/exercise the flow) before reporting done.
 
 output:
   type: routing

@@ -1,0 +1,2 @@
+PCL ID,Khu vực,Check Point,Nguồn,Loại,Ưu tiên,Covered By,Ghi chú
+PWA-LOGIN-PCL-01,Đăng nhập (Online),Kiểm thử nhóm: Đăng nhập (Online),M0-1 Sign In,Mixed,High,"PWA-LOGIN-TC-001, PWA-LOGIN-TC-002",

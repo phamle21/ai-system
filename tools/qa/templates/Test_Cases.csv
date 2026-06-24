@@ -1,0 +1,2 @@
+No.,TC ID,PCL ID,Nhóm,Chức năng,Tiền điều kiện,Dữ liệu test,Các bước,Kết quả mong đợi,Loại,Ưu tiên,Nguồn,Ghi chú
+1,PWA-LOGIN-TC-001,PWA-LOGIN-PCL-01,Đăng nhập (Online),Đăng nhập thành công,App online; tài khoản Monitor active,login_id=MON-2417; password=Password1234,"1. Mở màn Sign in | 2. Nhập Monitor ID | 3. Nhập password | 4. Bấm Sign in","- Gọi POST /api/user/auth/login | - Lưu Bearer token | - Chuyển sang Home",Functional,High,M0-1 Sign In,[AUTH]

@@ -16,6 +16,8 @@ rules:
       refactor -> build-feature
       review -> review
   - Must fall back to core skills when no domain skill matches
+  - Must route test-case intent (analyze | generate | review | export test cases, "tạo/viết test case") to skills/testing/qa-test-cases
+  - Must apply skills/core/vibecode alongside execution skills on any code-writing pipeline (build-feature | simple-fix | debug)
   - Must never route to unknown pipeline — return error instead
   - Must log route decision for auditability
 
@@ -73,6 +75,42 @@ routes:
     skills:
       - skills/core/targeted-code-review
       - skills/core/analyze
+
+  # Testing & QA – functional test-case generation (PCL workbook)
+  - task: generate test cases
+    stack: any
+    pipeline: review
+    skills:
+      - skills/testing/qa-test-cases
+      - skills/core/analyze
+
+  - task: write test cases
+    stack: any
+    pipeline: review
+    skills:
+      - skills/testing/qa-test-cases
+      - skills/core/analyze
+
+  - task: review test cases
+    stack: any
+    pipeline: review
+    skills:
+      - skills/testing/qa-test-cases
+
+  - task: export test cases
+    stack: any
+    pipeline: review
+    skills:
+      - skills/testing/qa-test-cases
+
+  # AI-assisted coding discipline – applied alongside execution skills
+  - task: vibecode
+    stack: any
+    pipeline: build-feature
+    skills:
+      - skills/core/vibecode
+      - skills/core/analyze
+      - skills/core/execute
 
   # WordPress – Block Development
   - task: create block

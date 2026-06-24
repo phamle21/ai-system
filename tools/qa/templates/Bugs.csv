@@ -1,0 +1,2 @@
+Bug ID,TC ID,Tiêu đề,Mức độ,Ưu tiên,Trạng thái,Bước tái hiện,Mong đợi,Thực tế,Môi trường,Người báo,Phụ trách,Ghi chú
+BUG-01,PWA-LOGIN-TC-002,Tiêu đề bug ngắn gọn,Major,High,Open,1. Bước một | 2. Bước hai,Hành vi mong đợi,Hành vi thực tế,Staging,Tên QA,Tên Dev,

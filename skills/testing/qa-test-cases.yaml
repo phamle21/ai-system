@@ -1,0 +1,196 @@
+name: qa-test-cases
+description: >-
+  Generate, review, and export functional QA test cases the way the Faeger
+  04.qa PCL system does, generalized for any project. Trigger on "analyze",
+  "generate test cases", "review test cases", "export xlsx", "tạo test case",
+  "viết test case", or when a feature/PR needs a manual QA suite (PCL + Test
+  Cases + Test Run + Bugs) before release.
+version: 1.0
+
+when_to_use:
+  - user asks to generate / write test cases for a feature, screen, endpoint, or PR
+  - user asks to review an existing test-case set for coverage and quality
+  - user asks to export test cases to the 5-sheet QA workbook (xlsx)
+  - QC-lead / tester planning before a release
+  - after a bug fix, to add a regression case that proves the bug is gone
+
+scope:
+  default: Functional QA — verify the feature behaves correctly.
+  out_of_scope_unless_asked: performance, security pentest, usability, accessibility.
+  language:
+    content: Write Scenario / Steps / Expected / Precondition in the team's working
+      language (Vietnamese with diacritics for this org).
+    keep_verbatim: UI labels, field names, statuses, endpoints, screen codes (e.g.
+      M0-1), TC / PCL IDs — never translate these.
+
+# --------------------------------------------------------------------------
+# Load the project's domain + locked rules BEFORE designing cases. Without the
+# domain, expected results and preconditions will be generic and untrustworthy.
+# --------------------------------------------------------------------------
+context_loading:
+  - Load the project routing overlay (projects/[project]/routing.yaml) and its
+    context files (.ai/context.yaml, architecture.md, rules.md, notes.md) first.
+  - Extract the project's locked conventions / business invariants (e.g. timezone,
+    auth model, scope rules, offline behavior, conflict resolution). Expected
+    results must respect these, not generic assumptions.
+  - Read the feature source the Dev provides (screen design, API contract, PR,
+    description). Do NOT re-derive requirements from code you guess at.
+  - If a project QA overlay exists (e.g. <project>/04.qa or .ai/qa), reuse its
+    domain block, ID prefixes, and coverage labels instead of inventing new ones.
+
+# --------------------------------------------------------------------------
+# GOLDEN RULE — never fill gaps with silent guesses.
+# --------------------------------------------------------------------------
+golden_rule:
+  principle: Use ONLY information present in the provided docs or confirmed by the
+    user. Never invent requirements, business rules, or system behavior.
+  on_gap:
+    ASSUMPTION:
+      when: gap is standard QA baseline (empty required field, negative/zero/overflow
+        input, network drop mid-action, double-tap, expired session).
+      how: allowed to add the case, but prefix Scenario with "[ASSUMPTION]" and add
+        a "Lý do:" line explaining why.
+    Pending:
+      when: only a business owner can decide (calculation logic, conditional UI
+        rules, integration contracts).
+      how: record TC ID + placeholder Scenario, leave Steps/Expected empty, mark
+        "[Pending: chờ làm rõ ___]". Do NOT guess.
+
+# --------------------------------------------------------------------------
+# Coverage — cover by where data flows (Actor x Surface), not by files just edited.
+# --------------------------------------------------------------------------
+coverage:
+  types: [Functional, Negative, Boundary, Integration, Regression]
+  project_extras: >-
+    Add project-specific groups when the domain needs them (e.g. Online, Offline,
+    Permission/Scope, Sync/Conflict). Pull these from the project overlay; do not
+    hardcode one project's labels onto another.
+  actor_surface_matrix:
+    rule: >-
+      A feature often writes data that is READ on another surface whose code did
+      not change — that surface still needs a case. Before finalizing, build a
+      matrix of Actors x Surfaces and ensure every affected cell has >= 1 case.
+    actors_example: [end user, admin/back-office user, system (sync / cron / audit)]
+    surfaces_example: [primary UI, secondary UI that reads the same data, backend
+      API (validation + scope + response), audit/ledger, sync path, DB integrity]
+    prompt_to_ask: "For each field/behavior added or changed — which Actor and
+      Surface READS or is AFFECTED by it?"
+
+# --------------------------------------------------------------------------
+# Design techniques — choose consciously, do not apply mechanically.
+# --------------------------------------------------------------------------
+techniques:
+  - Equivalence Partitioning — valid vs invalid input classes, role classes, in/out
+    of scope.
+  - Boundary Value Analysis — min/max and just-over-the-edge values, length limits,
+    today vs future dates.
+  - Decision Table — combinations of conditions (e.g. actor x timestamp -> winner;
+    permission x state -> allowed action).
+  - State Transition — status lifecycles (pending -> syncing -> synced/failed;
+    offline -> online -> auto-sync).
+  - Use Case — realistic end-to-end flow of one actor's session.
+  - Error Guessing — clock skew, duplicate keys, concurrent edits, reload while
+    offline, partial saves.
+  note: For each test group, add one short line naming the technique used; if a
+    technique does not fit (no state machine -> no State Transition), say so rather
+    than forcing it.
+
+# --------------------------------------------------------------------------
+# Case quality — every case must be able to fail.
+# --------------------------------------------------------------------------
+case_quality:
+  - Describe behavior, not code — "what the user sees/does", never "which function runs".
+  - One behavior per case; independent; states its own preconditions (data, role,
+    network, scope).
+  - Expected result MUST be able to FAIL. A case that passes even when the app is
+    wrong is useless. Be concrete ("shows validation error and does NOT call the
+    API"), not "succeeds".
+  - UI-executable — steps run through the browser/UI, not SQL/curl/Postman/log
+    reading. Verify backend behavior via the admin UI or an observable output.
+  - Concrete, in-domain test data — use real example values, not "valid data".
+  - Prove-It for bug fixes — the case must reproduce the bug first, then assert the
+    fixed behavior.
+  - Scale to complexity, do NOT pad — one requirement = enough cases to verify it,
+    no filler.
+
+# --------------------------------------------------------------------------
+# Workflows — match the user's verb.
+# --------------------------------------------------------------------------
+workflows:
+  analyze:
+    trigger: '"analyze" / a feature doc is pasted'
+    produce:
+      - Feature summary (2-3 sentences)
+      - Numbered key requirements
+      - Business rules / constraints / validation
+      - Data fields & entities (input/output, value ranges)
+      - API contract (endpoint, scope, key response) if any
+      - Behavior variants the project cares about (e.g. online vs offline, role vs role)
+      - Permission / scope
+      - Data lineage -> Actor x Surface (who reads/writes this data)
+      - Edge cases & ambiguities, each tagged QA-baseline ([ASSUMPTION]) or
+        business-decision ([Pending])
+    close_with: 'Ask: "Generate test cases now, or clarify something first?"'
+  generate:
+    trigger: '"generate test cases"'
+    steps:
+      - Use the analyze output as the base; do not re-ask for the doc.
+      - Group by feature/area (or by TODO if requirements are split into TODOs);
+        keep document order.
+      - Apply fitting techniques + full coverage types + the Actor x Surface matrix.
+      - Emit Test Case Summary + the case set + update the Decisions Log.
+  review:
+    trigger: '"review test cases"'
+    assess: [coverage incl. Actor x Surface, technique fit, quality (generic data?
+      vague expected? missing steps? duplicates? unlabeled hidden assumptions?)]
+    return: overall verdict, coverage table, gaps, cases-to-fix, prioritized actions
+      (Critical / Important / Nice-to-have). Confirm before generating gap-fill cases.
+  export:
+    trigger: '"export xlsx"'
+    how: >-
+      Emit ONE JSON matching tools/qa/build_workbook.py schema, then run
+      `python tools/qa/build_workbook.py <file>.json` to produce a 5-sheet xlsx
+      (00 Overview / PCL / Test_Cases / Test_Run / Bugs). Do not invent
+      columns/colors — the script owns layout. In Claude Code, run it directly;
+      elsewhere, hand the JSON to the user to run.
+
+# --------------------------------------------------------------------------
+# Output format — 1 workbook per module, 5 sheets.
+# --------------------------------------------------------------------------
+output_format:
+  workbook: One living sheet per module with tabs "00 Overview · PCL · Test_Cases ·
+    Test_Run · Bugs". Test_Cases = master (from JSON, never hand-edited). Test_Run =
+    append-only (one row per TC run: tester · build · result). PCL = checklist
+    auto-derived from area (or supplied manually for critical modules). Bugs =
+    fallback; prefer an issue tracker.
+  test_case_summary_header: |
+    Total: [X]  |  Functional [X] · Negative [X] · Boundary [X] · Integration [X] · Regression [X]
+    [project extras, e.g. Online/Offline/Permission/Sync as applicable]
+    [ASSUMPTION]: [X]   [Pending]: [X]
+  ids:
+    pcl: "{APP}-{MODULE}-PCL-NNN"
+    tc: "{APP}-{MODULE}-TC-NNN"
+    note: APP/MODULE come from the project (e.g. ADMIN/PWA; LOGIN/FIELDS/SYNC).
+  priority: 'Critical (data loss/corruption, security, auth, wrong core invariant) ·
+    High (core flow) · Medium (edge/display) · Low (auxiliary)'
+  json_schema_ref: tools/qa/README.md
+  templates_ref: tools/qa/templates/columns.md
+
+decisions_log:
+  what: Per module, keep a short decisions.md recording meta-level choices — coverage
+    rationale, interpretation of ambiguous spec (cite the doc section), global
+    assumptions (applied to all cases, not repeated inline), and self-assessed
+    low-confidence groups to re-review.
+  style: short bullets, reference TC IDs; small task = short file.
+
+rules:
+  - Functional QA only unless the user asks for more.
+  - Never assume silently — use [ASSUMPTION] or [Pending].
+  - Cover by data lineage (Actor x Surface), not by files just edited.
+  - Every Expected result must be able to FAIL.
+  - Steps must be UI-executable; keep UI labels / IDs / endpoints verbatim.
+  - Reuse the project's domain, locked rules, ID prefixes, and coverage labels from
+    its overlay; do not carry one project's domain into another.
+
+reference_implementation: faeger-ug-sdd/04.qa (qa-assistant.md + templates + tools)
+  — the mature source this skill generalizes.

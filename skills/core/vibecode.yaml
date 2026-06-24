@@ -1,0 +1,116 @@
+name: vibecode
+description: >-
+  Playbook for AI-assisted coding ("vibecode") that catches the failure modes
+  LLM coding actually produces — scope creep, hallucinated APIs, false "done",
+  overengineering, lost context, unsafe edits. Pairs the engineering-protocol
+  principles with a concrete anti-pattern -> guardrail -> self-check loop.
+  Apply on any code-writing task; lean on it harder for multi-file changes.
+version: 1.0
+
+when_to_use:
+  - always active while writing or editing code
+  - before claiming a task is done
+  - when a change spans more than one file or touches existing behavior
+  - when iterating fast on AI-generated code without a clear spec
+
+# --------------------------------------------------------------------------
+# The recurring failure modes of AI coding, and the guardrail for each.
+# This is the heart of the skill — recognize the smell, apply the guard.
+# --------------------------------------------------------------------------
+failure_modes:
+  - id: scope-creep
+    smell: Change touches files/behaviors the request never mentioned; "while I was
+      here" edits; reformatting or renaming unrelated code.
+    guard: Every changed line must trace to the request. Touch only what you must.
+      Note unrelated issues, do not fix them in this diff.
+
+  - id: hallucinated-api
+    smell: Calling a function/hook/field/method/endpoint that "should" exist;
+      inventing config keys or library options from memory.
+    guard: Grep/read the real definition before using it. If it is not in the repo
+      or confirmed docs, it does not exist — find the real one or ask.
+
+  - id: false-done
+    smell: "Done / fixed / working" without running anything; assuming tests pass;
+      reporting success from reading the diff alone.
+    guard: Run the build/test/lint or exercise the path. State exactly what was run
+      and its result. If you did not run it, say "not run" and why — never imply
+      verification that did not happen.
+
+  - id: overengineering
+    smell: Abstractions, config flags, "flexibility", or layers nobody asked for;
+      200 lines where 50 would do; premature generalization for a single caller.
+    guard: Minimum code that solves the stated problem. No feature beyond the ask.
+      If it could be half the size, rewrite it.
+
+  - id: lost-context
+    smell: Reimplementing something the project already has; ignoring existing
+      patterns, helpers, naming, or conventions; duplicating a utility.
+    guard: Read neighbours first. Match local style, naming, and existing helpers.
+      Search for prior art before adding new code.
+
+  - id: unsafe-edit
+    smell: Overwriting/deleting code you did not read; editing generated or
+      vendored files; "fixing" something whose purpose you have not confirmed.
+    guard: Read the target before changing it. If what you find contradicts how it
+      was described, or you did not create it, surface that instead of proceeding.
+
+  - id: requirement-drift
+    smell: Building what is easy or what you assumed, not what was asked; silently
+      resolving ambiguity; guessing business logic / data shape / permissions.
+    guard: Restate the goal, detect ambiguity, ask up to 3 precise questions before
+      coding. Never guess business rules — state the assumption explicitly if you
+      must proceed.
+
+  - id: regression-blindness
+    smell: Changing shared/legacy code with no thought for other callers or old
+      data; no fallback for missing/legacy values.
+    guard: Find other callers and legacy data shapes. Preserve backward
+      compatibility or call out the break. Add a reproduction-then-fix for bugs.
+
+# --------------------------------------------------------------------------
+# How a vibecode task should flow — fast, but with checkpoints.
+# --------------------------------------------------------------------------
+loop:
+  - Understand: restate the goal in one line; list unknowns; ask if blocking.
+  - Explore: read the real code paths, helpers, and conventions involved.
+  - Plan: smallest change that works; name verify checkpoints up front.
+  - Implement: incremental, surgical edits matching local style.
+  - Verify: run the relevant build/test/lint or exercise the path; observe output.
+  - Report: files changed, what was run + result, residual risks. No hedging when
+    verified; no false confidence when not.
+
+# --------------------------------------------------------------------------
+# Verify-before-claim — the single highest-value habit. Pick the cheapest real
+# signal available; do not substitute reasoning for execution.
+# --------------------------------------------------------------------------
+verification:
+  ladder:
+    - syntax/lint/type-check (cheapest)
+    - unit / targeted test for the changed path
+    - run the app and exercise the actual user flow
+    - for bug fixes: confirm the reproduction now passes
+  rule: Claim only what a signal supports. "Tests pass" requires running tests.
+    "Works" requires exercising it. Otherwise report what is unverified and why.
+
+definition_of_done:
+  - The request — and only the request — is implemented.
+  - It follows existing patterns and conventions.
+  - The relevant verification was run and its result is reported.
+  - Risks, assumptions, and any skipped steps are stated plainly.
+
+rules:
+  - Surgical over clever; simplest working solution wins.
+  - No invented APIs, data, or behavior — verify against the repo.
+  - Never report verified-sounding success for work you did not run.
+  - Ask before guessing business logic, data model, permissions, or public/private
+    API behavior.
+  - Hand off review-stage concerns to skills/core/code-review or
+    skills/core/targeted-code-review; QA suites to skills/testing/qa-test-cases.
+
+related:
+  - rules/engineering-protocol.md
+  - rules/engineering-workflow.md
+  - skills/core/code-review.yaml
+  - skills/core/targeted-code-review.yaml
+  - skills/testing/qa-test-cases.yaml

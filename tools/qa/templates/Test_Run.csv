@@ -1,0 +1,2 @@
+Run ID,TC ID,Cycle/Build,Môi trường,Tester,Ngày,Kết quả,Actual Result,Bug ID,Ghi chú
+RUN-YYYYMMDD-01,PWA-LOGIN-TC-001,v1.0.0,Staging,Tên QA,YYYY-MM-DD,Not Run,,,Mỗi lần chạy thêm 1 dòng mới (nhiều tester / nhiều vòng)
